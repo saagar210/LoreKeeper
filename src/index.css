@@ -1,0 +1,136 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0a0a0a;
+  --text: #33ff33;
+  --text-dim: #1a8c1a;
+  --text-bright: #66ff66;
+  --accent: #00cc00;
+  --error: #ff4444;
+  --combat: #ff6666;
+  --dialogue: #66cccc;
+  --input: #ffaa33;
+  --system: #888888;
+  --border: #1a3a1a;
+  --panel-bg: #0d0d0d;
+  --hp-high: #33ff33;
+  --hp-mid: #ffcc00;
+  --hp-low: #ff4444;
+  font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dim);
+}
+
+/* Selection */
+::selection {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+/* Focus outlines */
+*:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Disable text selection on UI elements */
+button,
+label {
+  user-select: none;
+}
+
+/* Range input styling */
+input[type="range"] {
+  accent-color: var(--accent);
+}
+
+/* Checkbox styling */
+input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+
+/* Responsive: mobile */
+@media (max-width: 768px) {
+  .sidebar-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    transform: translateX(100%);
+    transition: transform 0.2s ease-in-out;
+  }
+
+  .sidebar-drawer.open {
+    transform: translateX(0);
+  }
+
+  .sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 35;
+    background: rgba(0, 0, 0, 0.6);
+  }
+
+  .sidebar-toggle {
+    position: fixed;
+    top: 0.5rem;
+    right: 0.5rem;
+    z-index: 30;
+    border: 1px solid var(--border);
+    background: var(--panel-bg);
+    color: var(--text-dim);
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  .sidebar-toggle:hover {
+    color: var(--text);
+  }
+
+  /* Larger touch targets */
+  button {
+    min-height: 36px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Even larger touch targets for small phones */
+  button {
+    min-height: 44px;
+  }
+
+  input[type="text"],
+  select {
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
+}

@@ -1,0 +1,543 @@
+# LoreKeeper Phase 2 — Feature Expansion PRD
+
+## Project Context
+
+LoreKeeper is a text adventure game built with Tauri 2 + React 19 + Rust backend + Ollama LLM narration. The core game "The Depths of Thornhold" is fully implemented with 13 locations, ~20 items, 5 NPCs, 5 quests, and multiple endings. The codebase has 67 Rust tests and 129 frontend Vitest tests, all passing. TypeScript strict mode and Rust clippy are clean.
+
+### Current Architecture
+- **Rust backend**: models/ (9 files), engine/ (9), narrative/ (5), persistence/ (4), commands/ (4), lib.rs, main.rs
+- **Frontend**: store/types.ts, hooks/ (4), lib/ (2), components/terminal/ (4), sidebar/ (6), screens/ (5), App.tsx
+- **State management**: Rust owns WorldState, passed to frontend via Tauri invoke. Tauri events for narrative streaming.
+- **Persistence**: SQLite via rusqlite for saves and settings
+- **Build**: Cargo.toml at `src-tauri/`, Vite + React at project root
+
+### Key Types (from src/store/types.ts)
+- WorldState: player, locations (Record<string, Location>), items, npcs, quests, events, gameMode, combatState
+- Location: id, name, exits (Record<Direction, string>), lockedExits, visited, npcs, items, ambientMood
+- Player: location, inventory, health, equippedWeapon/Armor, visitedLocations, turnsElapsed, questFlags
+- GameMode: "exploring" | { inCombat: string } | { inDialogue: string } | { gameOver: EndingType }
+- Screen: "title" | "game" | "settings" | "saveload"
+
+---
+
+## Feature 1: Interactive Map Visualization
+
+### Overview
+Replace the current text-based MiniMap sidebar component with an interactive SVG node graph showing rooms as nodes, connections as edges, current position highlighted, and visited/unvisited states.
+
+### Requirements
+- Render an SVG-based graph inside the existing MiniMap panel area (w-72 sidebar)
+- Each visited location is a node (small rounded rect or circle) with its name as a label
+- Edges connect rooms based on their `exits` data
+- Current location node is highlighted with the accent color, larger, and pulsing or glowing
+- Visited but not current locations shown in dim text color
+- Unvisited locations that are adjacent to visited ones shown as "?" mystery nodes (player knows an exit exists but hasn't been there)
+- Click on a visited node could show a tooltip with the location name and available exits
+- The graph should auto-layout using a simple force-directed or grid-based algorithm — no external graph library, keep it lightweight
+- Zoom/pan not required for 13 rooms, but the graph should fit within the sidebar width
+- Must remain performant — recompute layout only when visitedLocations changes
+
+### Technical Approach
+- Create `src/components/sidebar/MapGraph.tsx` replacing or wrapping the existing `MiniMap.tsx`
+- Use inline SVG with React — nodes as `<rect>` or `<circle>`, edges as `<line>` or `<path>`
+- Layout algorithm: precompute a position map for all 13 Thornhold locations based on their connections (can be a static layout since the map is fixed, or a simple auto-layout from adjacency)
+- Store layout positions in a `src/lib/mapLayout.ts` utility
+- Style using CSS variables (--accent, --text-dim, --bg, etc.) for theme compatibility
+- Add Vitest tests for layout computation logic and component rendering
+
+### Acceptance Criteria
+- SVG map renders all visited rooms and their connections
+- Current room clearly distinguished visually
+- Adjacent unvisited rooms shown as mystery nodes
+- Theme-compatible (works with all 4 themes)
+- Existing sidebar layout preserved (map replaces old MiniMap section)
+- Vitest tests for MapGraph component and layout utility
+
+---
+
+## Feature 2: Save Slot Improvements
+
+### Overview
+Improve the SaveLoadScreen with formatted relative timestamps ("2 hours ago"), location name display, and a small visual summary for each save slot.
+
+### Requirements
+- Display save timestamps as relative time ("just now", "5 minutes ago", "2 hours ago", "3 days ago", etc.)
+- Show the full location name (not just ID) in save slot display
+- Add a small stats summary line: "HP: 75/100 | Turn 42 | 3 quests done"
+- Sort saves by most recent first
+- Add a visual indicator for the quicksave slot (star icon or "[Quick]" badge)
+
+### Technical Approach
+- Create `src/lib/timeFormat.ts` with a `relativeTime(dateString: string): string` function
+- Modify `SaveLoadScreen.tsx` to use the formatter
+- The SaveSlotInfo type already has playerLocation, playerHealth, turnsElapsed, questsCompleted, savedAt — all needed data is available
+- Sort the saves array by savedAt descending after fetching
+- Add Vitest tests for the relativeTime utility
+
+### Acceptance Criteria
+- Timestamps shown as human-readable relative times
+- Saves sorted newest first
+- Quicksave slot visually distinguished
+- Stats summary visible for each slot
+- Vitest tests for timeFormat utility
+
+---
+
+## Feature 3: Animated Screen Transitions
+
+### Overview
+Add smooth animated transitions between screens (title→game, game→death, game→ending) and for overlay modals (settings, save/load).
+
+### Requirements
+- Screen transitions: fade or slide animation (300-400ms)
+- Title screen to Game: fade out title, fade in game
+- Game to Death/Ending: overlay fades/slides in
+- Modal overlays (settings, save/load): backdrop fades in, panel slides down or scales in
+- Animations should respect `prefers-reduced-motion` media query
+- No external animation library — use CSS transitions/animations and React state
+
+### Technical Approach
+- Create a `src/components/Transition.tsx` wrapper component that applies CSS transition classes based on mount/unmount state
+- Use CSS `@keyframes` for enter/exit animations in `src/index.css` or a new `src/styles/transitions.css`
+- For screen transitions in App.tsx, track previous and next screen state to apply exit/enter classes
+- For modals, wrap content in Transition component with fade+scale or fade+slide variants
+- Use `onAnimationEnd` or `onTransitionEnd` to clean up state after exit animations
+- Add `prefers-reduced-motion` media query to disable animations
+
+### Acceptance Criteria
+- Smooth transitions between all screen states
+- Modal open/close animated
+- Respects prefers-reduced-motion
+- No layout jank or flash of unstyled content
+- Performance: no dropped frames on transitions
+
+---
+
+## Feature 4: Tutorial and Hint System
+
+### Overview
+Add an optional tutorial overlay for new players and a contextual hint system accessible via a `help` command that suggests relevant actions based on current game state.
+
+### Requirements
+
+#### Tutorial
+- On first game start (no saves exist), show a brief tutorial overlay explaining basic commands: movement (go north), look, take, inventory, talk, help
+- Tutorial can be dismissed and will not show again (stored in settings/localStorage)
+- Tutorial shows example commands with visual styling matching the terminal
+
+#### Contextual Hints
+- `help` command returns context-sensitive suggestions based on current state
+- In a room with NPCs: "Try 'talk [name]' to speak with someone"
+- In a room with items: "Try 'take [item]' to pick something up"
+- In combat: "Use 'attack', 'flee', or 'use [item]'"
+- In dialogue: available dialogue options listed
+- Near locked exits: "This exit is locked — you need to find a key"
+- General: list all available commands
+
+### Technical Approach
+
+#### Rust Backend
+- Add a `process_help` function in `src-tauri/src/engine/` that examines current WorldState and returns contextual help messages as a CommandResponse
+- Wire it into the command parser to handle "help" input
+- Return OutputLine entries with lineType "system"
+
+#### Frontend
+- Create `src/components/screens/TutorialOverlay.tsx` — a dismissible modal with styled command examples
+- Track tutorial-seen state in GameSettings (add `tutorialSeen: boolean` field) or localStorage
+- Show overlay after first `initialize_game` if not seen
+- Add Vitest tests for tutorial display/dismiss and help command hints
+
+### Acceptance Criteria
+- Tutorial shows on first play, dismissible, does not repeat
+- `help` command returns relevant suggestions for current context
+- Help output styled consistently with game terminal
+- Vitest tests for TutorialOverlay component
+- Rust tests for help command context detection
+
+---
+
+## Feature 5: E2E Tests with Playwright
+
+### Overview
+Add end-to-end integration tests that test the full Tauri application running, covering critical user flows.
+
+### Requirements
+- Test the following flows:
+  1. App launches, title screen visible
+  2. New Game → terminal appears with welcome message
+  3. Basic navigation: type "go north", see response
+  4. Save game → load game → verify state restored
+  5. Settings panel opens/closes
+  6. Game completion flow (if feasible to script)
+- Tests should run against the dev build (`cargo tauri dev`)
+- Tests should be isolated and not depend on Ollama being available
+
+### Technical Approach
+- Install `@playwright/test` as a dev dependency
+- Create `e2e/` directory at project root with test files
+- Create `playwright.config.ts` configuring the webview testing approach
+- Since Tauri apps use a webview, use Playwright's Electron/WebView support or test against the Vite dev server directly (localhost:1420) with Tauri IPC mocked at the HTTP level
+- Alternative: Use `tauri-driver` (WebDriver) with Playwright for true E2E
+- Create a `e2e/helpers.ts` with common setup (launch app, wait for ready)
+- Add `npm run test:e2e` script
+
+### Acceptance Criteria
+- At least 5 E2E test scenarios passing
+- Tests run via npm script
+- Tests documented in README or test file comments
+- Tests do not require Ollama
+
+---
+
+## Feature 6: Persistent Game Statistics
+
+### Overview
+Track and display cumulative player statistics across all game sessions, stored in SQLite alongside saves.
+
+### Requirements
+- Track: total playthroughs, total turns across all games, rooms discovered (cumulative), enemies defeated, quests completed, deaths, victories (by type), fastest completion (fewest turns), items collected
+- Display on a new "Stats" screen accessible from title screen and in-game menu
+- Statistics persist across app restarts
+- Reset stats option available
+
+### Technical Approach
+
+#### Rust Backend
+- Create `src-tauri/src/persistence/stats.rs` with a `GameStats` struct
+- Add a `game_stats` table to SQLite schema (single row, updated on game events)
+- Create Tauri commands: `get_stats`, `update_stats`, `reset_stats`
+- Hook stat updates into game event processing: on death, on victory, on quest complete, etc.
+- Update stats at the end of each game (death/victory) and periodically during play
+
+#### Frontend
+- Add `GameStats` type to `src/store/types.ts`
+- Create `src/components/screens/StatsScreen.tsx` showing stats in a clean grid/table layout
+- Add "Stats" button to TitleScreen
+- Add stats access from in-game settings/pause menu
+- Add Vitest tests for StatsScreen
+
+### Acceptance Criteria
+- Stats tracked across multiple playthroughs
+- Stats screen accessible from title and in-game
+- Stats persist after app restart
+- Reset option works
+- Rust tests for stats persistence
+- Vitest tests for StatsScreen component
+
+---
+
+## Feature 7: Command Autocomplete
+
+### Overview
+Add tab-completion to the TerminalInput that suggests valid commands and visible nouns based on current WorldState.
+
+### Requirements
+- Press Tab to autocomplete current input
+- If only one match, complete it immediately
+- If multiple matches, show a small dropdown/inline list of options
+- Complete command verbs: go, look, take, drop, use, equip, unequip, talk, attack, flee, examine, inventory, help, save, load
+- Complete nouns: visible items (in room + inventory), NPCs in room, exit directions
+- Autocomplete is context-sensitive: after "go ", suggest directions; after "take ", suggest room items; after "talk ", suggest NPCs
+- Escape or clicking away dismisses suggestions
+- Arrow keys navigate suggestions, Enter selects
+
+### Technical Approach
+- Create `src/lib/autocomplete.ts` with a `getCompletions(input: string, worldState: WorldState): string[]` function
+- Parse the input to determine if completing a verb or a noun
+- For verbs: match prefix against command list
+- For nouns: determine command context, then match against appropriate list from worldState
+- Modify `TerminalInput.tsx` to handle Tab key, show suggestions dropdown, navigate with arrows
+- Create `src/components/terminal/AutocompleteDropdown.tsx` for the suggestions UI
+- Add Vitest tests for autocomplete logic and component
+
+### Acceptance Criteria
+- Tab triggers autocomplete
+- Single match auto-completes
+- Multiple matches show dropdown
+- Context-sensitive noun completion
+- Keyboard navigation works (arrows + enter + escape)
+- Vitest tests for autocomplete utility and dropdown component
+
+---
+
+## Feature 8: Mobile / Responsive Layout
+
+### Overview
+Make the game playable on tablet-sized screens by adding a responsive layout with a collapsible sidebar.
+
+### Requirements
+- On screens < 768px wide, sidebar collapses to a toggle button
+- Sidebar slides in as an overlay when toggled
+- Terminal takes full width on mobile
+- Touch-friendly button sizes (min 44px tap targets)
+- Input area remains accessible and properly sized on mobile
+- Title screen and modal dialogs responsive
+- All theme styles work at mobile sizes
+
+### Technical Approach
+- Add Tailwind responsive breakpoints to existing layouts
+- Modify `App.tsx` game screen layout: sidebar conditionally rendered based on screen size
+- Add a toggle button (hamburger or info icon) in the terminal header area
+- Sidebar in mobile mode: absolute/fixed overlay with backdrop
+- Use CSS media queries or a `useMediaQuery` hook to detect breakpoint
+- Adjust font sizes, padding, button sizes for touch
+- Test on Chrome DevTools mobile emulation
+- Add Vitest tests for responsive behavior where applicable
+
+### Acceptance Criteria
+- Game playable on 768px wide screens
+- Sidebar toggles on/off on mobile
+- No horizontal scrolling
+- Touch-friendly button sizes
+- All screens and modals responsive
+
+---
+
+## Feature 9: Accessibility Audit and Improvements
+
+### Overview
+Conduct a thorough accessibility audit and fix issues to ensure the game is playable with keyboard-only navigation and screen readers.
+
+### Requirements
+- Full keyboard navigation: Tab through all interactive elements in logical order
+- Focus management: focus moves correctly on screen transitions and modal open/close
+- Focus trap in modals: Tab stays within modal when open
+- Skip-to-content link or landmark regions
+- ARIA attributes: proper roles, labels, states for all custom components
+- High contrast support: game should be readable in high contrast mode
+- Screen reader announcements: game state changes announced (room changes, combat, quest updates)
+- All images/icons have alt text or aria-labels
+- Form inputs properly labeled
+- Color not used as sole indicator (HP bar has text values too — already done)
+
+### Technical Approach
+- Audit each component for keyboard accessibility, add tabIndex where needed
+- Add `aria-label`, `aria-describedby`, `aria-live` regions for dynamic content
+- Create `src/hooks/useFocusTrap.ts` for modal focus trapping
+- Add focus management in App.tsx screen transitions (auto-focus first interactive element)
+- Add `role="navigation"`, `role="main"`, `role="complementary"` landmarks
+- Add visually-hidden live region for game state announcements
+- Test with VoiceOver on macOS
+- Add Vitest tests verifying ARIA attributes and keyboard interaction
+
+### Acceptance Criteria
+- Full keyboard navigation without mouse
+- Focus trapped in modals
+- Screen reader can follow game flow
+- ARIA landmarks and labels on all components
+- No accessibility warnings from automated tools (axe-core)
+- Vitest tests verify ARIA attributes
+
+---
+
+## Feature 10: Multiple Game Modules
+
+### Overview
+Abstract the world builder so "The Depths of Thornhold" is one loadable game module, and users can create/load custom adventures from definition files.
+
+### Requirements
+- Game module defined as a JSON or TOML file containing: locations, items, NPCs, quests, events, player starting state
+- "The Depths of Thornhold" extracted into a module file as the default/built-in module
+- Module selection screen: list available modules, show name/description/author
+- Modules loaded from a designated directory (app data dir or user-specified)
+- Validation: module file validated on load with clear error messages for malformed data
+- Module metadata: name, description, author, version, difficulty
+- No changes to core engine — modules provide data, engine runs it
+
+### Technical Approach
+
+#### Rust Backend
+- Create `src-tauri/src/engine/module.rs` defining a `GameModule` struct with all world data
+- Extract current `build_world()` hardcoded data into a `thornhold.json` module file
+- Create `load_module(path)` function that deserializes JSON into GameModule
+- Validate module: check all referenced IDs exist, exits point to valid locations, quest objectives valid
+- Tauri commands: `list_modules`, `load_module`, `get_module_info`
+- Default module bundled in app resources
+
+#### Frontend
+- Create `src/components/screens/ModuleSelectScreen.tsx`
+- Show module cards with name, description, author, difficulty
+- "Play" button starts game with selected module
+- Add to Screen type: "moduleSelect"
+- Add Vitest tests for module selection screen
+- Add Rust tests for module loading and validation
+
+### Acceptance Criteria
+- Thornhold works as a loadable module (no regression)
+- Module definition format documented
+- Module validation with clear errors
+- Module selection UI functional
+- At least one additional example module (even a tiny 3-room demo)
+- Rust tests for module loading/validation
+- Vitest tests for ModuleSelectScreen
+
+---
+
+## Feature 11: Combat Log Replay
+
+### Overview
+Store combat encounters as structured data and display a visual summary/replay after each combat ends.
+
+### Requirements
+- Each combat turn recorded: attacker, action, damage dealt, HP remaining
+- After combat ends (win or flee), show a combat summary panel
+- Summary shows: turn-by-turn breakdown, total damage dealt/received, turns taken
+- Visual: simple timeline or table with color-coded entries (player actions green, enemy red)
+- Dismissible — click to return to normal gameplay
+- Accessible from a "Combat Log" button during combat
+
+### Technical Approach
+
+#### Rust Backend
+- Create `CombatLogEntry` struct: turn number, actor (player/enemy), action, damage, resultHP
+- Add `combat_log: Vec<CombatLogEntry>` to WorldState or CombatState
+- Append entries during combat processing in `src-tauri/src/engine/combat.rs`
+- Clear log when new combat starts
+- Include combat log in CommandResponse when combat ends
+
+#### Frontend
+- Create `src/components/terminal/CombatSummary.tsx` — styled panel showing the log
+- Show automatically after combat resolution
+- Display as a modal overlay or inline in the terminal
+- Add Vitest tests for CombatSummary component
+
+### Acceptance Criteria
+- Combat turns recorded accurately
+- Summary displays after combat ends
+- Summary shows turn-by-turn data with visual styling
+- Dismissible
+- Rust tests for combat log recording
+- Vitest tests for CombatSummary component
+
+---
+
+## Feature 12: LLM Narration Quality Controls
+
+### Overview
+Let users rate LLM narrations and store feedback for potential prompt tuning and model selection insights.
+
+### Requirements
+- After each LLM narration completes, show subtle thumbs-up/thumbs-down buttons inline
+- Ratings stored in SQLite with: narration text, model used, temperature, rating, timestamp
+- Settings panel shows narration stats: total narrations, average rating, best-rated model
+- Export ratings as JSON for external analysis (optional)
+- Ratings do not interrupt gameplay flow — small, unobtrusive UI
+
+### Technical Approach
+
+#### Rust Backend
+- Create `src-tauri/src/persistence/ratings.rs` with NarrationRating struct and DB table
+- Tauri commands: `rate_narration`, `get_narration_stats`, `export_ratings`
+- Store: narration_text (truncated), model, temperature, rating (1-5 or thumbs), timestamp
+
+#### Frontend
+- Add inline rating buttons to narration lines in TerminalOutput (show on hover or after narration complete)
+- Create a small `NarrationRating.tsx` component (thumbs up/down icons)
+- Add narration stats section to SettingsPanel
+- Add types to store/types.ts
+- Add Vitest tests for NarrationRating component
+
+### Acceptance Criteria
+- Users can rate narrations with minimal friction
+- Ratings persisted in SQLite
+- Stats viewable in settings
+- Rating UI does not interrupt gameplay
+- Rust tests for rating persistence
+- Vitest tests for rating component
+
+---
+
+## Feature 13: Custom Theme Creator
+
+### Overview
+Let users create and save custom color themes beyond the 4 built-in options.
+
+### Requirements
+- Theme editor accessible from Settings panel
+- Color pickers for each CSS variable (background, text, accent, error, combat, dialogue, etc.)
+- Live preview: changes apply immediately as user adjusts
+- Save custom theme with a name
+- Custom themes appear alongside built-in themes in theme selector
+- Delete custom themes
+- Custom themes persisted in SQLite or JSON file
+- Export/import themes as JSON
+
+### Technical Approach
+
+#### Rust Backend
+- Create `src-tauri/src/persistence/themes.rs` for custom theme storage
+- Tauri commands: `save_custom_theme`, `list_custom_themes`, `delete_custom_theme`, `export_theme`, `import_theme`
+- Store themes as JSON blobs in SQLite
+
+#### Frontend
+- Create `src/components/screens/ThemeEditor.tsx` with color picker inputs for each variable
+- Use native HTML `<input type="color">` for color pickers
+- Group colors logically: base (bg, text, border), game (combat, dialogue, error), UI (accent, system)
+- Live preview via `applyTheme` equivalent that sets CSS vars from the editor state
+- Add to SettingsPanel: "Create Theme" button that opens editor
+- Custom themes listed alongside built-in ones in theme selector
+- Add Vitest tests for ThemeEditor
+
+### Acceptance Criteria
+- Users can create, save, and delete custom themes
+- Live preview works
+- Custom themes persist across app restarts
+- Export/import functional
+- Built-in themes unaffected
+- Vitest tests for ThemeEditor component
+
+---
+
+## Feature 14: CI Pipeline
+
+### Overview
+Set up GitHub Actions CI to run all checks on every push and PR.
+
+### Requirements
+- Pipeline runs on push to main and on all PRs
+- Steps: install deps, Rust tests, clippy, frontend tests, TypeScript check, Vite build
+- Cache Cargo and npm dependencies for speed
+- Fail fast on any step failure
+- Badge in README showing CI status
+- Optional: run E2E tests in CI (may require special setup for Tauri)
+
+### Technical Approach
+- Create `.github/workflows/ci.yml`
+- Use `actions/checkout`, `actions/setup-node`, `dtolnay/rust-toolchain`
+- Cache: `actions/cache` for ~/.cargo and node_modules
+- Steps:
+  1. `npm ci`
+  2. `npx tsc --noEmit`
+  3. `npx vitest run`
+  4. `cd src-tauri && cargo test`
+  5. `cd src-tauri && cargo clippy -- -D warnings`
+  6. `npx vite build` (verify production build)
+- Matrix: test on ubuntu-latest (and optionally macos-latest)
+- Install system dependencies for Tauri Linux build (libwebkit2gtk, etc.)
+
+### Acceptance Criteria
+- CI runs on all pushes and PRs
+- All 6 check steps included
+- Dependencies cached
+- Pipeline completes in under 10 minutes
+- CI badge in README
+- No false positives (pipeline is green on current main)
+
+---
+
+## Implementation Phases
+
+### Phase 1: Foundation and Quick Wins (Features 14, 2, 3)
+CI pipeline first (protects everything), then save improvements and transitions — small scope, high polish.
+
+### Phase 2: Core UX (Features 7, 4, 1)
+Autocomplete, tutorial/hints, and map visualization — biggest user-facing improvements.
+
+### Phase 3: Quality and Testing (Features 9, 5)
+Accessibility audit and E2E tests — quality hardening.
+
+### Phase 4: Data and Stats (Features 6, 11, 12)
+Game statistics, combat log, narration ratings — data-driven features that enhance replayability.
+
+### Phase 5: Extensibility (Features 10, 13, 8)
+Game modules, theme creator, responsive layout — platform features for customization and reach.

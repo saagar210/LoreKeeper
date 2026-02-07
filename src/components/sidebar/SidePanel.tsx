@@ -1,6 +1,7 @@
 import type { WorldState } from "../../store/types";
 import { CombatLog } from "./CombatLog";
 import { InventoryPanel } from "./InventoryPanel";
+import { JournalPanel } from "./JournalPanel";
 import { MiniMap } from "./MiniMap";
 import { QuestLog } from "./QuestLog";
 import { RoomInfo } from "./RoomInfo";
@@ -41,10 +42,14 @@ export function SidePanel({ worldState, onClose }: Props) {
         <StatsPanel player={worldState.player} items={worldState.items} />
       </div>
       <div className="border-t border-[var(--border)] pt-3">
-        <InventoryPanel player={worldState.player} items={worldState.items} />
+        <InventoryPanel player={worldState.player} items={worldState.items} recipes={worldState.recipes} />
       </div>
       <div className="border-t border-[var(--border)] pt-3">
         <QuestLog quests={worldState.quests} />
+      </div>
+      <div className="border-t border-[var(--border)] pt-3">
+        <h3 className="text-xs font-bold text-[var(--accent)] mb-1">Codex</h3>
+        <JournalPanel journal={worldState.journal} />
       </div>
       {worldState.combatLog.length > 0 && (
         <div className="border-t border-[var(--border)] pt-3">

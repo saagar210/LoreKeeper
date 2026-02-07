@@ -21,6 +21,29 @@ pub struct GameSettings {
     pub theme: ThemeName,
     #[serde(default = "default_narration_verbosity")]
     pub narration_verbosity: String,
+    #[serde(default)]
+    pub sound_enabled: bool,
+    #[serde(default = "default_sound_volume")]
+    pub sound_volume: f64,
+    #[serde(default = "default_difficulty")]
+    pub difficulty: Difficulty,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Difficulty {
+    Easy,
+    #[default]
+    Normal,
+    Hard,
+}
+
+fn default_sound_volume() -> f64 {
+    0.5
+}
+
+fn default_difficulty() -> Difficulty {
+    Difficulty::Normal
 }
 
 fn default_narration_verbosity() -> String {
@@ -38,6 +61,9 @@ impl Default for GameSettings {
             typewriter_speed: 30,
             theme: ThemeName::GreenTerminal,
             narration_verbosity: "normal".to_string(),
+            sound_enabled: false,
+            sound_volume: 0.5,
+            difficulty: Difficulty::Normal,
         }
     }
 }

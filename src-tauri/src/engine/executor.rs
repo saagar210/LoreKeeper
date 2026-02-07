@@ -1,4 +1,4 @@
-use crate::engine::{combat, dialogue, events, parser::GameCommand, quest, templates};
+use crate::engine::{combat, crafting, dialogue, events, parser::GameCommand, quest, templates};
 use crate::models::*;
 
 fn build_narrative_context(
@@ -101,6 +101,11 @@ pub fn execute(command: GameCommand, state: &mut WorldState) -> ActionResult {
         GameCommand::Inventory => execute_inventory(state),
         GameCommand::Map => execute_map(state),
         GameCommand::QuestLog => execute_quest_log(state),
+        GameCommand::Journal => execute_journal(state),
+        GameCommand::Craft(first, second) => {
+            crafting::execute_craft(&first, second.as_deref(), state)
+        }
+        GameCommand::Secret(word) => execute_secret(&word, state),
         GameCommand::Help => execute_help(state),
         GameCommand::Save(_) | GameCommand::Load(_) => {
             // Handled at command layer
@@ -108,6 +113,7 @@ pub fn execute(command: GameCommand, state: &mut WorldState) -> ActionResult {
                 messages: vec![],
                 action_type: ActionType::DisplayOnly,
                 narrative_context: None,
+                sound_cues: vec![],
             }
         }
         GameCommand::Unknown(msg) => {
@@ -128,6 +134,7 @@ pub fn execute(command: GameCommand, state: &mut WorldState) -> ActionResult {
                 }],
                 action_type: ActionType::Error { message: msg },
                 narrative_context: None,
+                sound_cues: vec![],
             }
         }
     }
@@ -146,6 +153,7 @@ fn execute_look(target: Option<String>, state: &mut WorldState) -> ActionResult 
                     message: "Invalid location".into(),
                 },
                 narrative_context: None,
+                sound_cues: vec![],
             }
         }
     };
@@ -168,48 +176,63 @@ fn execute_look(target: Option<String>, state: &mut WorldState) -> ActionResult 
                 messages,
                 action_type,
                 narrative_context: ctx,
+                sound_cues: vec![],
             }
         }
         Some(target) => {
+            // Check for room examine keywords
+            if matches!(target.as_str(), "room" | "around" | "here" | "area" | "surroundings") {
+                let lines = templates::describe_examine_room(&loc);
+                return ActionResult {
+                    messages: lines.into_iter().map(|text| OutputLine { text, line_type: LineType::Narration }).collect(),
+                    action_type: ActionType::DisplayOnly,
+                    narrative_context: None,
+                sound_cues: vec![],
+                };
+            }
+
             // Search items in room, inventory, then NPCs
             let room_items = &loc.items;
             let matches = fuzzy_match_item(&target, room_items, &state.items);
             if let Some(&(id, _)) = matches.first() {
-                if let Some(item) = state.items.get(id) {
+                if let Some(item) = state.items.get(id).cloned() {
+                    let lines = templates::describe_examine_item(&item);
+                    if item.lore.is_some() {
+                        add_journal_entry(state, &format!("item_{}", id), JournalCategory::Item, &item.name, item.lore.as_deref().unwrap_or(&item.description));
+                    }
                     return ActionResult {
-                        messages: vec![OutputLine {
-                            text: format!("{}: {}", item.name, item.description),
-                            line_type: LineType::Narration,
-                        }],
+                        messages: lines.into_iter().map(|text| OutputLine { text, line_type: LineType::Narration }).collect(),
                         action_type: ActionType::DisplayOnly,
                         narrative_context: None,
+                        sound_cues: vec![],
                     };
                 }
             }
 
             let inv_matches = fuzzy_match_item(&target, &state.player.inventory, &state.items);
             if let Some(&(id, _)) = inv_matches.first() {
-                if let Some(item) = state.items.get(id) {
+                if let Some(item) = state.items.get(id).cloned() {
+                    let lines = templates::describe_examine_item(&item);
+                    if item.lore.is_some() {
+                        add_journal_entry(state, &format!("item_{}", id), JournalCategory::Item, &item.name, item.lore.as_deref().unwrap_or(&item.description));
+                    }
                     return ActionResult {
-                        messages: vec![OutputLine {
-                            text: format!("{}: {}", item.name, item.description),
-                            line_type: LineType::Narration,
-                        }],
+                        messages: lines.into_iter().map(|text| OutputLine { text, line_type: LineType::Narration }).collect(),
                         action_type: ActionType::DisplayOnly,
                         narrative_context: None,
+                        sound_cues: vec![],
                     };
                 }
             }
 
             if let Some((id, _)) = fuzzy_match_npc(&target, &loc.npcs, &state.npcs) {
                 if let Some(npc) = state.npcs.get(id) {
+                    let lines = templates::describe_examine_npc(npc);
                     return ActionResult {
-                        messages: vec![OutputLine {
-                            text: format!("{}: {}", npc.name, npc.description),
-                            line_type: LineType::Narration,
-                        }],
+                        messages: lines.into_iter().map(|text| OutputLine { text, line_type: LineType::Narration }).collect(),
                         action_type: ActionType::DisplayOnly,
                         narrative_context: None,
+                sound_cues: vec![],
                     };
                 }
             }
@@ -223,6 +246,7 @@ fn execute_look(target: Option<String>, state: &mut WorldState) -> ActionResult 
                     message: format!("Not found: {}", target),
                 },
                 narrative_context: None,
+                sound_cues: vec![],
             }
         }
     }
@@ -245,6 +269,7 @@ fn finalize_move(dest_id: &str, first_visit: bool, messages: &mut Vec<OutputLine
             messages: messages.clone(),
             action_type: ActionType::PlayerDeath,
             narrative_context: build_narrative_context(&ActionType::PlayerDeath, state),
+                sound_cues: vec![],
         });
     }
 
@@ -297,6 +322,7 @@ fn execute_go(direction: Direction, state: &mut WorldState) -> ActionResult {
                     message: "Invalid location".into(),
                 },
                 narrative_context: None,
+                sound_cues: vec![],
             }
         }
     };
@@ -314,6 +340,7 @@ fn execute_go(direction: Direction, state: &mut WorldState) -> ActionResult {
                     message: format!("Can't go {}", direction),
                 },
                 narrative_context: None,
+                sound_cues: vec![],
             }
         }
     };
@@ -353,6 +380,7 @@ fn execute_go(direction: Direction, state: &mut WorldState) -> ActionResult {
                     message: format!("Locked: {}", direction),
                 },
                 narrative_context: None,
+                sound_cues: vec![],
             };
         }
     }
@@ -367,6 +395,34 @@ fn execute_go(direction: Direction, state: &mut WorldState) -> ActionResult {
         dest.visited = true;
     }
 
+    // Auto-add journal entry for first visit
+    if first_visit {
+        if let Some(dest) = state.locations.get(&dest_id) {
+            let dest_name = dest.name.clone();
+            let dest_desc = dest.description.clone();
+            add_journal_entry(state, &format!("loc_{}", dest_id), JournalCategory::Location, &dest_name, &dest_desc);
+        }
+    }
+
+    // Process turn-based events and status effect ticks
+    let turn_msgs = events::process_turn_events(state);
+    messages.extend(turn_msgs);
+
+    // Check for player death from status effect damage
+    if state.player.health <= 0 {
+        state.game_mode = GameMode::GameOver(EndingType::Death);
+        messages.push(OutputLine {
+            text: templates::describe_player_death(),
+            line_type: LineType::Combat,
+        });
+        return ActionResult {
+            messages,
+            action_type: ActionType::PlayerDeath,
+            narrative_context: build_narrative_context(&ActionType::PlayerDeath, state),
+            sound_cues: vec![],
+        };
+    }
+
     // Shared post-move logic
     if let Some(early_return) = finalize_move(&dest_id, first_visit, &mut messages, state) {
         return early_return;
@@ -378,6 +434,7 @@ fn execute_go(direction: Direction, state: &mut WorldState) -> ActionResult {
         messages,
         action_type,
         narrative_context: ctx,
+                sound_cues: vec![],
     }
 }
 
@@ -414,6 +471,7 @@ fn execute_take(target: &str, state: &mut WorldState) -> ActionResult {
                 message: format!("Not found: {}", target),
             },
             narrative_context: None,
+                sound_cues: vec![],
         };
     }
 
@@ -426,6 +484,7 @@ fn execute_take(target: &str, state: &mut WorldState) -> ActionResult {
             }],
             action_type: ActionType::DisplayOnly,
             narrative_context: None,
+                sound_cues: vec![],
         };
     }
 
@@ -441,6 +500,7 @@ fn execute_take(target: &str, state: &mut WorldState) -> ActionResult {
                 message: "Inventory full".into(),
             },
             narrative_context: None,
+                sound_cues: vec![],
         };
     }
 
@@ -474,6 +534,7 @@ fn execute_take(target: &str, state: &mut WorldState) -> ActionResult {
         messages,
         action_type,
         narrative_context: ctx,
+                sound_cues: vec![],
     }
 }
 
@@ -489,6 +550,7 @@ fn execute_drop(target: &str, state: &mut WorldState) -> ActionResult {
                 message: format!("Not in inventory: {}", target),
             },
             narrative_context: None,
+                sound_cues: vec![],
         };
     }
 
@@ -518,6 +580,7 @@ fn execute_drop(target: &str, state: &mut WorldState) -> ActionResult {
         }],
         action_type,
         narrative_context: ctx,
+                sound_cues: vec![],
     }
 }
 
@@ -533,6 +596,7 @@ fn execute_use(target: &str, state: &mut WorldState) -> ActionResult {
                 message: format!("Not in inventory: {}", target),
             },
             narrative_context: None,
+                sound_cues: vec![],
         };
     }
 
@@ -549,6 +613,7 @@ fn execute_use(target: &str, state: &mut WorldState) -> ActionResult {
                     message: "Item not found".into(),
                 },
                 narrative_context: None,
+                sound_cues: vec![],
             }
         }
     };
@@ -563,6 +628,7 @@ fn execute_use(target: &str, state: &mut WorldState) -> ActionResult {
                 message: format!("Not usable: {}", item.name),
             },
             narrative_context: None,
+                sound_cues: vec![],
         };
     }
 
@@ -606,6 +672,7 @@ fn execute_use(target: &str, state: &mut WorldState) -> ActionResult {
                 }],
                 action_type: ActionType::DisplayOnly,
                 narrative_context: None,
+                sound_cues: vec![],
             };
         }
         _ => {
@@ -642,6 +709,7 @@ fn execute_use(target: &str, state: &mut WorldState) -> ActionResult {
         messages,
         action_type,
         narrative_context: ctx,
+                sound_cues: vec![],
     }
 }
 
@@ -657,6 +725,7 @@ fn execute_equip(target: &str, state: &mut WorldState) -> ActionResult {
                 message: format!("Not in inventory: {}", target),
             },
             narrative_context: None,
+                sound_cues: vec![],
         };
     }
 
@@ -674,6 +743,7 @@ fn execute_equip(target: &str, state: &mut WorldState) -> ActionResult {
                     message: "Item not found".into(),
                 },
                 narrative_context: None,
+                sound_cues: vec![],
             }
         }
     };
@@ -713,6 +783,7 @@ fn execute_equip(target: &str, state: &mut WorldState) -> ActionResult {
                     message: format!("Not equippable: {}", item.name),
                 },
                 narrative_context: None,
+                sound_cues: vec![],
             };
         }
     }
@@ -728,6 +799,7 @@ fn execute_equip(target: &str, state: &mut WorldState) -> ActionResult {
         messages,
         action_type,
         narrative_context: ctx,
+                sound_cues: vec![],
     }
 }
 
@@ -749,6 +821,7 @@ fn execute_unequip(target: &str, state: &mut WorldState) -> ActionResult {
                     }],
                     action_type: ActionType::ItemUnequipped { item_name: name },
                     narrative_context: None,
+                sound_cues: vec![],
                 };
             }
         }
@@ -769,6 +842,7 @@ fn execute_unequip(target: &str, state: &mut WorldState) -> ActionResult {
                     }],
                     action_type: ActionType::ItemUnequipped { item_name: name },
                     narrative_context: None,
+                sound_cues: vec![],
                 };
             }
         }
@@ -783,6 +857,7 @@ fn execute_unequip(target: &str, state: &mut WorldState) -> ActionResult {
             message: format!("Not equipped: {}", target),
         },
         narrative_context: None,
+                sound_cues: vec![],
     }
 }
 
@@ -804,6 +879,7 @@ fn execute_talk(target: &str, state: &mut WorldState) -> ActionResult {
                 messages: result.messages,
                 action_type: result.action_type,
                 narrative_context: build_narrative_context(&ActionType::DisplayOnly, state),
+                sound_cues: vec![],
             }
         }
         None => ActionResult {
@@ -815,6 +891,7 @@ fn execute_talk(target: &str, state: &mut WorldState) -> ActionResult {
                 message: format!("NPC not found: {}", target),
             },
             narrative_context: None,
+                sound_cues: vec![],
         },
     }
 }
@@ -825,6 +902,7 @@ fn execute_dialogue_input(input: &str, npc_id: &str, state: &mut WorldState) -> 
         messages: result.messages,
         action_type: result.action_type,
         narrative_context: build_narrative_context(&ActionType::DisplayOnly, state),
+                sound_cues: vec![],
     }
 }
 
@@ -843,6 +921,7 @@ fn execute_attack(target: &str, state: &mut WorldState) -> ActionResult {
                 messages,
                 action_type: result.action_type,
                 narrative_context: ctx,
+                sound_cues: vec![],
             };
         }
 
@@ -851,6 +930,7 @@ fn execute_attack(target: &str, state: &mut WorldState) -> ActionResult {
             messages: result.messages,
             action_type: result.action_type,
             narrative_context: ctx,
+                sound_cues: vec![],
         };
     }
 
@@ -878,6 +958,7 @@ fn execute_attack(target: &str, state: &mut WorldState) -> ActionResult {
                             message: "NPC data missing".into(),
                         },
                         narrative_context: None,
+                sound_cues: vec![],
                     }
                 }
             };
@@ -892,6 +973,7 @@ fn execute_attack(target: &str, state: &mut WorldState) -> ActionResult {
                         message: "Target is dead".into(),
                     },
                     narrative_context: None,
+                sound_cues: vec![],
                 };
             }
 
@@ -905,8 +987,18 @@ fn execute_attack(target: &str, state: &mut WorldState) -> ActionResult {
 
             // Make NPC hostile
             if let Some(n) = state.npcs.get_mut(&npc_id) {
+                if !n.hostile {
+                    n.relationship = -50;
+                    n.memory.push(crate::models::npc::NpcMemory {
+                        turn: state.player.turns_elapsed,
+                        event: "attacked_while_friendly".into(),
+                    });
+                }
                 n.hostile = true;
             }
+
+            // Add bestiary journal entry
+            add_journal_entry(state, &format!("npc_{}", npc_id), JournalCategory::Bestiary, &npc.name, &npc.description);
 
             let mut messages = vec![OutputLine {
                 text: format!("You engage {} in combat!", npc.name),
@@ -923,6 +1015,7 @@ fn execute_attack(target: &str, state: &mut WorldState) -> ActionResult {
                     messages,
                     action_type: result.action_type,
                     narrative_context: build_narrative_context(&ActionType::PlayerDeath, state),
+                sound_cues: vec![],
                 };
             }
 
@@ -936,6 +1029,7 @@ fn execute_attack(target: &str, state: &mut WorldState) -> ActionResult {
                 messages,
                 action_type: result.action_type,
                 narrative_context: ctx,
+                sound_cues: vec![],
             }
         }
         None => ActionResult {
@@ -947,6 +1041,7 @@ fn execute_attack(target: &str, state: &mut WorldState) -> ActionResult {
                 message: format!("Target not found: {}", target),
             },
             narrative_context: None,
+                sound_cues: vec![],
         },
     }
 }
@@ -962,6 +1057,7 @@ fn execute_flee(state: &mut WorldState) -> ActionResult {
                 message: "Not in combat".into(),
             },
             narrative_context: None,
+                sound_cues: vec![],
         };
     }
 
@@ -974,6 +1070,7 @@ fn execute_flee(state: &mut WorldState) -> ActionResult {
             messages: result.messages,
             action_type: result.action_type,
             narrative_context: build_narrative_context(&ActionType::PlayerDeath, state),
+                sound_cues: vec![],
         };
     }
 
@@ -996,6 +1093,7 @@ fn execute_flee(state: &mut WorldState) -> ActionResult {
         messages,
         action_type: result.action_type,
         narrative_context: ctx,
+                sound_cues: vec![],
     }
 }
 
@@ -1011,6 +1109,7 @@ fn execute_inventory(state: &mut WorldState) -> ActionResult {
             .collect(),
         action_type: ActionType::DisplayOnly,
         narrative_context: None,
+                sound_cues: vec![],
     }
 }
 
@@ -1026,6 +1125,7 @@ fn execute_map(state: &mut WorldState) -> ActionResult {
             .collect(),
         action_type: ActionType::DisplayOnly,
         narrative_context: None,
+                sound_cues: vec![],
     }
 }
 
@@ -1063,6 +1163,177 @@ fn execute_quest_log(state: &mut WorldState) -> ActionResult {
             .collect(),
         action_type: ActionType::DisplayOnly,
         narrative_context: None,
+                sound_cues: vec![],
+    }
+}
+
+fn add_journal_entry(state: &mut WorldState, id: &str, category: JournalCategory, title: &str, content: &str) {
+    if !state.journal.iter().any(|e| e.id == id) {
+        state.journal.push(JournalEntry {
+            id: id.to_string(),
+            category,
+            title: title.to_string(),
+            content: content.to_string(),
+            discovered_turn: state.player.turns_elapsed,
+        });
+    }
+}
+
+fn execute_journal(state: &mut WorldState) -> ActionResult {
+    let mut lines = vec!["--- Codex ---".to_string()];
+    if state.journal.is_empty() {
+        lines.push("No entries yet. Explore and examine to discover lore.".to_string());
+    } else {
+        let categories = [
+            (JournalCategory::Location, "Locations"),
+            (JournalCategory::Bestiary, "Bestiary"),
+            (JournalCategory::Item, "Items"),
+            (JournalCategory::Lore, "Lore"),
+        ];
+        for (cat, label) in &categories {
+            let entries: Vec<&JournalEntry> = state.journal.iter().filter(|e| &e.category == cat).collect();
+            if !entries.is_empty() {
+                lines.push(format!("\n{}:", label));
+                for entry in entries {
+                    lines.push(format!("  - {}: {}", entry.title, entry.content));
+                }
+            }
+        }
+    }
+    ActionResult {
+        messages: lines.into_iter().map(|text| OutputLine { text, line_type: LineType::System }).collect(),
+        action_type: ActionType::DisplayOnly,
+        narrative_context: None,
+        sound_cues: vec![],
+    }
+}
+
+fn execute_secret(word: &str, state: &mut WorldState) -> ActionResult {
+    let already_discovered = state.player.discovered_secrets.contains(&word.to_string());
+    if !already_discovered {
+        state.player.discovered_secrets.push(word.to_string());
+    }
+
+    match word {
+        "xyzzy" => {
+            // Teleport to a random visited room
+            let visited: Vec<String> = state.player.visited_locations.iter()
+                .filter(|loc| *loc != &state.player.location)
+                .cloned()
+                .collect();
+            if visited.is_empty() {
+                return ActionResult {
+                    messages: vec![OutputLine {
+                        text: "A hollow voice says \"Nothing happens.\" You haven't explored enough.".to_string(),
+                        line_type: LineType::System,
+                    }],
+                    action_type: ActionType::DisplayOnly,
+                    narrative_context: None,
+                    sound_cues: vec![],
+                };
+            }
+            // Use turns_elapsed as a pseudo-random index
+            let idx = state.player.turns_elapsed as usize % visited.len();
+            let dest_id = visited[idx].clone();
+            state.player.location = dest_id.clone();
+            let dest_name = state.locations.get(&dest_id).map(|l| l.name.clone()).unwrap_or(dest_id.clone());
+            ActionResult {
+                messages: vec![
+                    OutputLine {
+                        text: "The world shifts and blurs around you...".to_string(),
+                        line_type: LineType::System,
+                    },
+                    OutputLine {
+                        text: format!("You find yourself in {}.", dest_name),
+                        line_type: LineType::Narration,
+                    },
+                ],
+                action_type: ActionType::RoomEntered { first_visit: false },
+                narrative_context: None,
+                sound_cues: vec![SoundCue::DoorUnlock],
+            }
+        }
+        "plugh" => {
+            // Reveal hidden vault if in great_hall, else flavor text
+            if state.player.location == "great_hall" {
+                // Add exit to hidden_vault from great_hall
+                if let Some(loc) = state.locations.get_mut("great_hall") {
+                    if let std::collections::hash_map::Entry::Vacant(e) = loc.exits.entry(Direction::Down) {
+                        e.insert("hidden_vault".into());
+                        return ActionResult {
+                            messages: vec![
+                                OutputLine {
+                                    text: "You speak the ancient word. The floor trembles, and a hidden staircase descends into darkness below!".to_string(),
+                                    line_type: LineType::System,
+                                },
+                                OutputLine {
+                                    text: "A new passage has opened downward.".to_string(),
+                                    line_type: LineType::System,
+                                },
+                            ],
+                            action_type: ActionType::EventTriggered { event_description: "Hidden vault revealed".into() },
+                            narrative_context: None,
+                            sound_cues: vec![SoundCue::DoorUnlock],
+                        };
+                    }
+                }
+                ActionResult {
+                    messages: vec![OutputLine {
+                        text: "The passage to the vault is already open.".to_string(),
+                        line_type: LineType::System,
+                    }],
+                    action_type: ActionType::DisplayOnly,
+                    narrative_context: None,
+                    sound_cues: vec![],
+                }
+            } else {
+                ActionResult {
+                    messages: vec![OutputLine {
+                        text: "A hollow voice says \"Plugh.\" Nothing seems to happen here. Perhaps in a grander hall...".to_string(),
+                        line_type: LineType::System,
+                    }],
+                    action_type: ActionType::DisplayOnly,
+                    narrative_context: None,
+                    sound_cues: vec![],
+                }
+            }
+        }
+        "abracadabra" => {
+            // Restore a small amount of health
+            let heal = 5;
+            state.player.health = (state.player.health + heal).min(state.player.max_health);
+            ActionResult {
+                messages: vec![OutputLine {
+                    text: format!("A tingle of magic courses through you. (+{} HP)", heal),
+                    line_type: LineType::System,
+                }],
+                action_type: ActionType::DisplayOnly,
+                narrative_context: None,
+                sound_cues: vec![SoundCue::ItemUse],
+            }
+        }
+        "sesame" | "opensesame" => {
+            ActionResult {
+                messages: vec![OutputLine {
+                    text: "The word echoes off the walls. You feel you're being watched by something ancient and amused.".to_string(),
+                    line_type: LineType::System,
+                }],
+                action_type: ActionType::DisplayOnly,
+                narrative_context: None,
+                sound_cues: vec![],
+            }
+        }
+        _ => {
+            ActionResult {
+                messages: vec![OutputLine {
+                    text: "Nothing happens.".to_string(),
+                    line_type: LineType::System,
+                }],
+                action_type: ActionType::DisplayOnly,
+                narrative_context: None,
+                sound_cues: vec![],
+            }
+        }
     }
 }
 
@@ -1078,12 +1349,14 @@ fn execute_help(state: &mut WorldState) -> ActionResult {
             .collect(),
         action_type: ActionType::DisplayOnly,
         narrative_context: None,
+                sound_cues: vec![],
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::engine::world_builder;
     use std::collections::HashMap;
 
     fn make_test_world() -> WorldState {
@@ -1101,6 +1374,8 @@ mod tests {
                 visited: true,
                 discovered_secrets: vec![],
                 ambient_mood: Mood::Peaceful,
+                examine_details: Some("Scratches on the walls suggest a struggle.".into()),
+                revisit_description: Some("Room A feels familiar.".into()),
             },
         );
         state.locations.insert(
@@ -1116,6 +1391,8 @@ mod tests {
                 visited: false,
                 discovered_secrets: vec![],
                 ambient_mood: Mood::Mysterious,
+                examine_details: None,
+                revisit_description: None,
             },
         );
         state.items.insert(
@@ -1133,6 +1410,7 @@ mod tests {
                 usable: false,
                 consumable: false,
                 key_id: None,
+                lore: Some("An ancient blade.".into()),
             },
         );
         state.items.insert(
@@ -1150,6 +1428,7 @@ mod tests {
                 usable: true,
                 consumable: true,
                 key_id: None,
+                lore: None,
             },
         );
         state.npcs.insert(
@@ -1167,6 +1446,9 @@ mod tests {
                 defense: 3,
                 items: vec![],
                 quest_giver: None,
+                examine_text: Some("The guard wears a faded crest.".into()),
+                relationship: 0,
+                memory: vec![],
             },
         );
         state.player.location = "room_a".into();
@@ -1262,5 +1544,165 @@ mod tests {
             .messages
             .iter()
             .any(|m| m.text.contains("full")));
+    }
+
+    #[test]
+    fn test_examine_item_shows_stats_and_lore() {
+        let mut state = make_test_world();
+        let result = execute(GameCommand::Look(Some("sword".into())), &mut state);
+        assert!(result.messages.iter().any(|m| m.text.contains("Attack +3")));
+        assert!(result.messages.iter().any(|m| m.text.contains("ancient blade")));
+    }
+
+    #[test]
+    fn test_examine_npc_shows_examine_text() {
+        let mut state = make_test_world();
+        let result = execute(GameCommand::Look(Some("guard".into())), &mut state);
+        assert!(result.messages.iter().any(|m| m.text.contains("faded crest")));
+        assert!(result.messages.iter().any(|m| m.text.contains("20/20")));
+    }
+
+    #[test]
+    fn test_examine_room() {
+        let mut state = make_test_world();
+        let result = execute(GameCommand::Look(Some("room".into())), &mut state);
+        assert!(result.messages.iter().any(|m| m.text.contains("Scratches")));
+    }
+
+    #[test]
+    fn test_examine_room_inventory_item() {
+        let mut state = make_test_world();
+        state.player.inventory.push("sword".into());
+        state.locations.get_mut("room_a").unwrap().items.retain(|id| id != "sword");
+        let result = execute(GameCommand::Look(Some("sword".into())), &mut state);
+        assert!(result.messages.iter().any(|m| m.text.contains("Attack +3")));
+    }
+
+    #[test]
+    fn test_revisit_description() {
+        let mut state = make_test_world();
+        // Room A is visited=true, has revisit_description
+        let result = execute(GameCommand::Look(None), &mut state);
+        assert!(result.messages.iter().any(|m| m.text.contains("familiar")));
+    }
+
+    #[test]
+    fn test_first_visit_uses_full_description() {
+        let mut state = make_test_world();
+        let result = execute(GameCommand::Go(Direction::North), &mut state);
+        assert!(result.messages.iter().any(|m| m.text.contains("second room")));
+    }
+
+    #[test]
+    fn test_journal_entry_on_first_visit() {
+        let mut state = make_test_world();
+        assert!(state.journal.is_empty());
+        execute(GameCommand::Go(Direction::North), &mut state);
+        assert_eq!(state.player.location, "room_b");
+        assert!(!state.journal.is_empty());
+        let entry = state.journal.iter().find(|e| e.id == "loc_room_b");
+        assert!(entry.is_some());
+        let entry = entry.unwrap();
+        assert_eq!(entry.category, JournalCategory::Location);
+        assert_eq!(entry.title, "Room B");
+        assert_eq!(entry.content, "The second room.");
+    }
+
+    #[test]
+    fn test_journal_no_duplicate_on_revisit() {
+        let mut state = make_test_world();
+        execute(GameCommand::Go(Direction::North), &mut state);
+        let count_before = state.journal.len();
+        // Go back and revisit
+        execute(GameCommand::Go(Direction::South), &mut state);
+        execute(GameCommand::Go(Direction::North), &mut state);
+        // room_b was already visited, so no new entry
+        let loc_entries: Vec<_> = state.journal.iter().filter(|e| e.id == "loc_room_b").collect();
+        assert_eq!(loc_entries.len(), 1);
+        // room_a is also visited from start, but going back is not first_visit
+        assert_eq!(state.journal.len(), count_before);
+    }
+
+    #[test]
+    fn test_journal_command_empty() {
+        let mut state = make_test_world();
+        let result = execute(GameCommand::Journal, &mut state);
+        assert!(result.messages.iter().any(|m| m.text.contains("Codex")));
+        assert!(result.messages.iter().any(|m| m.text.contains("No entries yet")));
+    }
+
+    #[test]
+    fn test_journal_command_shows_entries() {
+        let mut state = make_test_world();
+        state.journal.push(JournalEntry {
+            id: "loc_room_a".into(),
+            category: JournalCategory::Location,
+            title: "Room A".into(),
+            content: "The first room.".into(),
+            discovered_turn: 0,
+        });
+        state.journal.push(JournalEntry {
+            id: "npc_guard".into(),
+            category: JournalCategory::Bestiary,
+            title: "Guard".into(),
+            content: "A watchful guard.".into(),
+            discovered_turn: 1,
+        });
+        let result = execute(GameCommand::Journal, &mut state);
+        assert!(result.messages.iter().any(|m| m.text.contains("Codex")));
+        assert!(result.messages.iter().any(|m| m.text.contains("Locations")));
+        assert!(result.messages.iter().any(|m| m.text.contains("Room A")));
+        assert!(result.messages.iter().any(|m| m.text.contains("Bestiary")));
+        assert!(result.messages.iter().any(|m| m.text.contains("Guard")));
+    }
+
+    #[test]
+    fn test_examine_item_with_lore_adds_journal_entry() {
+        let mut state = make_test_world();
+        assert!(state.journal.is_empty());
+        // Sword has lore "An ancient blade."
+        execute(GameCommand::Look(Some("sword".into())), &mut state);
+        let entry = state.journal.iter().find(|e| e.id == "item_sword");
+        assert!(entry.is_some());
+        let entry = entry.unwrap();
+        assert_eq!(entry.category, JournalCategory::Item);
+        assert_eq!(entry.content, "An ancient blade.");
+    }
+
+    #[test]
+    fn test_examine_item_without_lore_no_journal_entry() {
+        let mut state = make_test_world();
+        // Potion has no lore
+        execute(GameCommand::Look(Some("potion".into())), &mut state);
+        assert!(state.journal.iter().find(|e| e.id == "item_potion").is_none());
+    }
+
+    #[test]
+    fn secret_xyzzy_teleports() {
+        let mut state = world_builder::build_thornhold();
+        state.player.visited_locations.insert("great_hall".into());
+        state.player.turns_elapsed = 1;
+        let result = execute(GameCommand::Secret("xyzzy".into()), &mut state);
+        assert!(result.messages.iter().any(|m| m.text.contains("world shifts")));
+        assert_ne!(state.player.location, "courtyard");
+        assert!(state.player.discovered_secrets.contains(&"xyzzy".to_string()));
+    }
+
+    #[test]
+    fn secret_plugh_reveals_vault() {
+        let mut state = world_builder::build_thornhold();
+        state.player.location = "great_hall".into();
+        let result = execute(GameCommand::Secret("plugh".into()), &mut state);
+        assert!(result.messages.iter().any(|m| m.text.contains("hidden staircase")));
+        let hall = state.locations.get("great_hall").unwrap();
+        assert!(hall.exits.contains_key(&Direction::Down));
+    }
+
+    #[test]
+    fn secret_abracadabra_heals() {
+        let mut state = world_builder::build_thornhold();
+        state.player.health = 50;
+        execute(GameCommand::Secret("abracadabra".into()), &mut state);
+        assert_eq!(state.player.health, 55);
     }
 }

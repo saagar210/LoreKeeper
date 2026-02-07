@@ -51,12 +51,10 @@ describe("SaveLoadScreen", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it("calls handleDelete when Delete clicked", async () => {
+  it("requires confirmation before deleting", async () => {
     const user = userEvent.setup();
     const saves = [createSaveSlot({ slotName: "old_save" })];
     mockInvoke.mockResolvedValueOnce(saves); // list_saves
-    mockInvoke.mockResolvedValueOnce(undefined); // delete_save
-    mockInvoke.mockResolvedValueOnce([]); // refresh after delete
 
     render(<SaveLoadScreen mode="load" onClose={vi.fn()} />);
 
@@ -64,7 +62,14 @@ describe("SaveLoadScreen", () => {
       expect(screen.getByText("old_save")).toBeInTheDocument();
     });
 
+    // First click shows confirmation
     await user.click(screen.getByText("Delete"));
+    expect(screen.getByText("Confirm?")).toBeInTheDocument();
+
+    // Second click actually deletes
+    mockInvoke.mockResolvedValueOnce(undefined); // delete_save
+    mockInvoke.mockResolvedValueOnce([]); // refresh after delete
+    await user.click(screen.getByText("Confirm?"));
 
     expect(mockInvoke).toHaveBeenCalledWith("delete_save", { slotName: "old_save" });
   });

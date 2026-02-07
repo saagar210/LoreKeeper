@@ -1,12 +1,19 @@
 import { useCallback, useRef, useState } from "react";
 
+const MAX_COMMAND_HISTORY = 100;
+
 export function useCommandHistory() {
   const [history, setHistory] = useState<string[]>([]);
   const indexRef = useRef(-1);
 
   const addCommand = useCallback((cmd: string) => {
     if (cmd.trim()) {
-      setHistory((prev) => [...prev, cmd]);
+      setHistory((prev) => {
+        const next = [...prev, cmd];
+        return next.length > MAX_COMMAND_HISTORY
+          ? next.slice(next.length - MAX_COMMAND_HISTORY)
+          : next;
+      });
       indexRef.current = -1;
     }
   }, []);

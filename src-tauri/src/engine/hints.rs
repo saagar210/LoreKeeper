@@ -1,10 +1,15 @@
 use crate::models::WorldState;
+use crate::models::settings::Difficulty;
 
 /// Returns a contextual hint for new players. Returns None once the player
-/// has visited 4+ locations (experienced enough).
+/// has visited enough locations (threshold varies by difficulty).
 pub fn get_contextual_hint(state: &WorldState) -> Option<String> {
-    // Stop hinting once player is experienced
-    if state.player.visited_locations.len() >= 4 {
+    let threshold = match state.difficulty {
+        Difficulty::Easy => 8,
+        Difficulty::Normal => 4,
+        Difficulty::Hard => 2,
+    };
+    if state.player.visited_locations.len() >= threshold {
         return None;
     }
 

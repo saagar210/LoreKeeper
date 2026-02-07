@@ -10,7 +10,7 @@ const lineStyles: Record<LineType, string> = {
 };
 
 export function OutputLine({ line }: { line: OutputLineType }) {
-  if (!line.text) return <div className="h-2" />;
+  if (!line.text) return <div className="h-2" aria-hidden="true" />;
   const isHint = line.text.startsWith("[Hint]");
   const style = lineStyles[line.lineType] ?? "text-[var(--text)]";
   return (

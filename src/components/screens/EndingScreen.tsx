@@ -17,9 +17,14 @@ export function EndingScreen({ endingType, player, onPlayAgain }: Props) {
       : "By blade and determination, you have defeated The Forgotten One. Thornhold's curse is broken by force, though at great cost.";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 font-mono">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 font-mono"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="ending-heading"
+    >
       <div className="flex max-w-lg flex-col items-center gap-6 p-8 text-center">
-        <h1 className="text-3xl font-bold text-[var(--accent)]">{title}</h1>
+        <h1 id="ending-heading" className="text-3xl font-bold text-[var(--accent)]">{title}</h1>
         <p className="text-[var(--text)]">{description}</p>
         <div className="space-y-1 text-sm text-[var(--text-dim)]">
           <p>Turns taken: {player.turnsElapsed}</p>

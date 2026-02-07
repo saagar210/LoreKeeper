@@ -47,6 +47,7 @@ pub fn load_game(
     Ok(CommandResponse {
         messages,
         world_state: state.clone(),
+        sound_cues: vec![],
     })
 }
 

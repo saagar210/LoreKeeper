@@ -8,9 +8,14 @@ interface Props {
 
 export function DeathScreen({ player, onLoadSave, onNewGame }: Props) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 font-mono">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 font-mono"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="death-heading"
+    >
       <div className="flex flex-col items-center gap-6 p-8 text-center">
-        <h1 className="text-3xl font-bold text-[var(--error)]">You Have Perished</h1>
+        <h1 id="death-heading" className="text-3xl font-bold text-[var(--error)]">You Have Perished</h1>
         <p className="text-[var(--text-dim)]">
           Darkness claims another soul in the depths of Thornhold...
         </p>

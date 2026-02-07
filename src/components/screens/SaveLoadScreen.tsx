@@ -14,6 +14,7 @@ interface Props {
 export function SaveLoadScreen({ mode, onSave, onLoad, onClose }: Props) {
   const [saves, setSaves] = useState<SaveSlotInfo[]>([]);
   const [newSlotName, setNewSlotName] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,6 +47,11 @@ export function SaveLoadScreen({ mode, onSave, onLoad, onClose }: Props) {
   };
 
   const handleDelete = async (slot: string) => {
+    if (confirmDelete !== slot) {
+      setConfirmDelete(slot);
+      return;
+    }
+    setConfirmDelete(null);
     try {
       await invoke("delete_save", { slotName: slot });
       refreshSaves();
@@ -58,6 +64,7 @@ export function SaveLoadScreen({ mode, onSave, onLoad, onClose }: Props) {
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 font-mono"
       role="dialog"
+      aria-modal="true"
       aria-labelledby="saveload-heading"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -132,7 +139,7 @@ export function SaveLoadScreen({ mode, onSave, onLoad, onClose }: Props) {
                     onClick={() => handleDelete(save.slotName)}
                     className="text-[var(--error)] hover:underline"
                   >
-                    Delete
+                    {confirmDelete === save.slotName ? "Confirm?" : "Delete"}
                   </button>
                 </div>
               </div>

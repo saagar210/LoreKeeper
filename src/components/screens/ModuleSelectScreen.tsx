@@ -21,6 +21,7 @@ export function ModuleSelectScreen({ onModuleLoaded, onClose }: Props) {
   }, []);
 
   const fetchModules = useCallback(async () => {
+    setError(null);
     try {
       const result = await invoke<ModuleInfo[]>("list_modules");
       setModules(result);
@@ -36,6 +37,7 @@ export function ModuleSelectScreen({ onModuleLoaded, onClose }: Props) {
   }, [fetchModules]);
 
   const handleLoad = async (path: string) => {
+    setError(null);
     try {
       const response = await invoke<CommandResponse>("load_module", { path });
       onModuleLoaded(response);
@@ -48,6 +50,7 @@ export function ModuleSelectScreen({ onModuleLoaded, onClose }: Props) {
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 font-mono"
       role="dialog"
+      aria-modal="true"
       aria-labelledby="modules-heading"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();

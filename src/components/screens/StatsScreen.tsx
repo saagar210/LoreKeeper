@@ -54,6 +54,7 @@ export function StatsScreen({ onClose }: Props) {
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 font-mono"
       role="dialog"
+      aria-modal="true"
       aria-labelledby="stats-heading"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();

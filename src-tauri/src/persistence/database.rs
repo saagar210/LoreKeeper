@@ -16,6 +16,12 @@ pub fn initialize_database(conn: &Connection) -> Result<()> {
         conn.pragma_update(None, "user_version", 2)?;
     }
 
+    let user_version: i32 = conn.pragma_query_value(None, "user_version", |row| row.get(0))?;
+    if user_version < 3 {
+        migrate_v3(conn)?;
+        conn.pragma_update(None, "user_version", 3)?;
+    }
+
     Ok(())
 }
 
@@ -80,6 +86,18 @@ fn migrate_v2(conn: &Connection) -> Result<()> {
             name TEXT PRIMARY KEY,
             config TEXT NOT NULL
         );",
+    )?;
+    Ok(())
+}
+
+fn migrate_v3(conn: &Connection) -> Result<()> {
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS achievements (
+            id TEXT PRIMARY KEY,
+            unlocked_at TEXT NOT NULL
+        );
+
+        ALTER TABLE playthroughs ADD COLUMN command_log TEXT;",
     )?;
     Ok(())
 }

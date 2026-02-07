@@ -1,7 +1,11 @@
 use tauri::{Emitter, Manager, State};
 use tokio::sync::mpsc;
 
-use crate::engine::{executor, hints, parser, world_builder};
+use crate::engine::{
+    achievement_checker,
+    dungeon_generator::{self, DungeonConfig},
+    executor, hints, parser, world_builder,
+};
 use crate::models::*;
 use crate::narrative::narrator::{self, NarrativeEvent};
 use crate::persistence::state::{DbState, GameState, SettingsState};
@@ -13,6 +17,22 @@ pub fn initialize_game(game_state: State<GameState>) -> Result<CommandResponse, 
 
     if !state.initialized {
         *state = world_builder::build_thornhold();
+
+        // Generate procedural dungeon wing
+        let difficulty_base = match state.difficulty {
+            Difficulty::Easy => 3,
+            Difficulty::Normal => 5,
+            Difficulty::Hard => 8,
+        };
+        dungeon_generator::generate_dungeon(
+            &DungeonConfig {
+                entry_location: "armory".to_string(),
+                entry_direction: Direction::Down,
+                depth: 5,
+                difficulty_base,
+            },
+            &mut state,
+        );
     }
 
     let loc = state.locations.get(&state.player.location).cloned();
@@ -48,6 +68,7 @@ pub fn initialize_game(game_state: State<GameState>) -> Result<CommandResponse, 
     Ok(CommandResponse {
         messages,
         world_state: state.clone(),
+        sound_cues: vec![],
     })
 }
 
@@ -55,9 +76,31 @@ pub fn initialize_game(game_state: State<GameState>) -> Result<CommandResponse, 
 pub fn new_game(
     app: tauri::AppHandle,
     game_state: State<GameState>,
+    settings_state: State<SettingsState>,
 ) -> Result<CommandResponse, String> {
     let mut state = game_state.0.lock().map_err(|e| e.to_string())?;
     *state = world_builder::build_thornhold();
+
+    // Copy difficulty from settings
+    if let Ok(settings) = settings_state.0.lock() {
+        state.difficulty = settings.difficulty;
+    }
+
+    // Generate procedural dungeon wing
+    let difficulty_base = match state.difficulty {
+        Difficulty::Easy => 3,
+        Difficulty::Normal => 5,
+        Difficulty::Hard => 8,
+    };
+    dungeon_generator::generate_dungeon(
+        &DungeonConfig {
+            entry_location: "armory".to_string(),
+            entry_direction: Direction::Down,
+            depth: 5,
+            difficulty_base,
+        },
+        &mut state,
+    );
 
     // Track games_started stat
     if let Some(db) = app.try_state::<DbState>() {
@@ -95,6 +138,7 @@ pub fn new_game(
     Ok(CommandResponse {
         messages,
         world_state: state.clone(),
+        sound_cues: vec![],
     })
 }
 
@@ -105,7 +149,7 @@ pub async fn process_command(
     game_state: State<'_, GameState>,
     settings_state: State<'_, SettingsState>,
 ) -> Result<CommandResponse, String> {
-    let (mut messages, world_state, narrative_ctx, settings);
+    let (mut messages, world_state, narrative_ctx, settings, dialogue_llm_context);
 
     {
         let mut state = game_state.0.lock().map_err(|e| e.to_string())?;
@@ -121,6 +165,7 @@ pub async fn process_command(
                     line_type: LineType::System,
                 }],
                 world_state: state.clone(),
+        sound_cues: vec![],
             });
         }
 
@@ -139,6 +184,7 @@ pub async fn process_command(
                         line_type: LineType::System,
                     }],
                     world_state: state.clone(),
+        sound_cues: vec![],
                 });
             }
             parser::GameCommand::Load(slot_name) => {
@@ -169,10 +215,23 @@ pub async fn process_command(
                 return Ok(CommandResponse {
                     messages: msgs,
                     world_state: state.clone(),
+        sound_cues: vec![],
                 });
             }
             _ => {}
         }
+
+        // Record command in log
+        let log_entry = CommandLogEntry {
+            turn: state.player.turns_elapsed,
+            input: input.clone(),
+            location: state.player.location.clone(),
+            timestamp_ms: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_millis() as u64)
+                .unwrap_or(0),
+        };
+        state.command_log.push(log_entry);
 
         let prev_visited_count = state.player.visited_locations.len();
 
@@ -215,11 +274,111 @@ pub async fn process_command(
             }
         }
 
+        // Check achievements
+        let newly_earned = achievement_checker::check_achievements(&state, &result.action_type);
+        if !newly_earned.is_empty() {
+            if let Some(db) = app.try_state::<DbState>() {
+                if let Ok(conn) = db.0.lock() {
+                    for ach_id in &newly_earned {
+                        if !crate::persistence::achievements::is_unlocked(&conn, ach_id) {
+                            let _ =
+                                crate::persistence::achievements::unlock_achievement(&conn, ach_id);
+                            if let Some(ach) = crate::models::achievement::all_achievements()
+                                .into_iter()
+                                .find(|a| a.id == *ach_id)
+                            {
+                                messages.push(OutputLine {
+                                    text: format!(
+                                        "[Achievement Unlocked] {} - {}",
+                                        ach.name, ach.description
+                                    ),
+                                    line_type: LineType::System,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Save playthrough on game over
+        if matches!(state.game_mode, GameMode::GameOver(_)) {
+            if let Some(db) = app.try_state::<DbState>() {
+                if let Ok(conn) = db.0.lock() {
+                    let ending = match &state.game_mode {
+                        GameMode::GameOver(e) => Some(format!("{:?}", e)),
+                        _ => None,
+                    };
+                    let quests_done =
+                        state.quests.values().filter(|q| q.completed).count() as i32;
+                    let log_json =
+                        serde_json::to_string(&state.command_log).unwrap_or_default();
+                    let now = chrono::Utc::now().to_rfc3339();
+                    let _ = conn.execute(
+                        "INSERT INTO playthroughs (started_at, ended_at, ending_type, turns_taken, quests_completed, enemies_defeated, command_log) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                        rusqlite::params![
+                            now,
+                            now,
+                            ending,
+                            state.player.turns_elapsed as i32,
+                            quests_done,
+                            0,
+                            log_json,
+                        ],
+                    );
+                }
+            }
+        }
+
         narrative_ctx = result.narrative_context;
         // Store last narrative context for retry
         if narrative_ctx.is_some() {
             state.last_narrative_context = narrative_ctx.clone();
         }
+
+        // Detect free-form dialogue for LLM narration
+        dialogue_llm_context = if let GameMode::InDialogue(ref npc_id) = state.game_mode {
+            let npc_id = npc_id.clone();
+            if let ActionType::NpcDialogue {
+                ref dialogue_text, ..
+            } = result.action_type
+            {
+                // Only route through LLM for free-form text, not quest mechanic results
+                let is_quest_mechanic = matches!(
+                    dialogue_text.as_str(),
+                    "hostile" | "dead" | "declined"
+                );
+                if !is_quest_mechanic {
+                    // Record user input in dialogue history
+                    state.dialogue_history.push(DialogueHistoryEntry {
+                        role: "user".to_string(),
+                        text: input.clone(),
+                    });
+                    // Clone NPC data needed for LLM context
+                    state.npcs.get(&npc_id).map(|npc| {
+                        (
+                            npc.name.clone(),
+                            npc.personality_seed.clone(),
+                            input.clone(),
+                            npc.relationship,
+                            npc.memory.clone(),
+                            state
+                                .dialogue_history
+                                .iter()
+                                .map(|e| (e.role.clone(), e.text.clone()))
+                                .collect::<Vec<_>>(),
+                        )
+                    })
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
         world_state = state.clone();
         settings = settings_state.0.lock().map_err(|e| e.to_string())?.clone();
     }
@@ -245,8 +404,41 @@ pub async fn process_command(
         });
     }
 
+    // Spawn LLM dialogue narration for free-form NPC dialogue
+    if let Some((npc_name, personality_seed, dialogue_text, relationship, memory, history)) =
+        dialogue_llm_context
+    {
+        if settings.ollama_enabled {
+            let (tx, mut rx) = mpsc::channel::<NarrativeEvent>(32);
+            let settings_clone = settings.clone();
+
+            tauri::async_runtime::spawn(async move {
+                narrator::narrate_dialogue(
+                    &npc_name,
+                    &personality_seed,
+                    &dialogue_text,
+                    &settings_clone,
+                    relationship,
+                    &memory,
+                    &history,
+                    &tx,
+                )
+                .await;
+                drop(tx);
+            });
+
+            let app_clone3 = app.clone();
+            tauri::async_runtime::spawn(async move {
+                while let Some(event) = rx.recv().await {
+                    let _ = app_clone3.emit("narrative-event", &event);
+                }
+            });
+        }
+    }
+
     Ok(CommandResponse {
         messages,
         world_state,
+        sound_cues: vec![],
     })
 }

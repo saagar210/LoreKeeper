@@ -13,9 +13,14 @@ pub fn determine_tone(state: &WorldState) -> String {
         .map(|l| l.ambient_mood)
         .unwrap_or(Mood::Peaceful);
 
-    // Combat just ended (check if any quest was just completed)
+    // Recent quest completion (within last 3 turns)
     let recent_victory = matches!(state.game_mode, GameMode::Exploring)
-        && state.quests.values().any(|q| q.completed);
+        && state.quests.values().any(|q| {
+            q.completed
+                && q.completed_turn
+                    .map(|t| state.player.turns_elapsed.saturating_sub(t) < 3)
+                    .unwrap_or(false)
+        });
 
     if health_pct < 25 {
         return "desperate, visceral, every breath feels like the last".to_string();
@@ -65,6 +70,8 @@ mod tests {
                 visited: true,
                 discovered_secrets: vec![],
                 ambient_mood: Mood::Peaceful,
+                examine_details: None,
+                revisit_description: None,
             },
         );
 

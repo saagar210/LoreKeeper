@@ -61,10 +61,18 @@ pub fn load_module(
         .app_data_dir()
         .map_err(|e| format!("Failed to get app data dir: {}", e))?;
     let modules_dir = app_data_dir.join("modules");
+    // Ensure modules_dir exists before canonicalize
+    if !modules_dir.exists() {
+        std::fs::create_dir_all(&modules_dir)
+            .map_err(|e| format!("Failed to create modules dir: {}", e))?;
+    }
+    let canonical_modules_dir = modules_dir
+        .canonicalize()
+        .map_err(|e| format!("Failed to resolve modules dir: {}", e))?;
     let requested = std::path::Path::new(&path)
         .canonicalize()
         .map_err(|e| format!("Invalid path: {}", e))?;
-    if !requested.starts_with(&modules_dir) {
+    if !requested.starts_with(&canonical_modules_dir) {
         return Err("Module path must be within the modules directory.".into());
     }
 
@@ -106,5 +114,6 @@ pub fn load_module(
     Ok(CommandResponse {
         messages,
         world_state: state.clone(),
+        sound_cues: vec![],
     })
 }

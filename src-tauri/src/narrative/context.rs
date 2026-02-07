@@ -77,24 +77,51 @@ pub fn build_dialogue_messages(
     personality_seed: &str,
     dialogue_text: &str,
     settings: &GameSettings,
+    relationship: i32,
+    memory: &[NpcMemory],
+    dialogue_history: &[(String, String)],
 ) -> Vec<ChatMessage> {
     let _ = settings;
+    let relationship_desc = if relationship > 30 {
+        "friendly and warm"
+    } else if relationship < -30 {
+        "hostile and suspicious"
+    } else {
+        "neutral"
+    };
+    let memory_str = if memory.is_empty() {
+        String::new()
+    } else {
+        let recent: Vec<&str> = memory.iter().rev().take(5).map(|m| m.event.as_str()).collect();
+        format!(" Recent memories: {}.", recent.join(", "))
+    };
     let system_msg = format!(
-        "You are voicing \"{}\". Personality: {}. \
+        "You are voicing \"{}\". Personality: {}. Disposition toward the player: {}.{} \
          Respond in character. 1-2 sentences. Stay consistent with the personality.",
-        npc_name, personality_seed
+        npc_name, personality_seed, relationship_desc, memory_str
     );
 
-    vec![
-        ChatMessage {
-            role: "system".to_string(),
-            content: system_msg,
-        },
-        ChatMessage {
-            role: "user".to_string(),
-            content: dialogue_text.to_string(),
-        },
-    ]
+    let mut messages = vec![ChatMessage {
+        role: "system".to_string(),
+        content: system_msg,
+    }];
+
+    // Include last 5 dialogue history entries for multi-turn context
+    let history_start = dialogue_history.len().saturating_sub(5);
+    for (role, text) in &dialogue_history[history_start..] {
+        messages.push(ChatMessage {
+            role: role.clone(),
+            content: text.clone(),
+        });
+    }
+
+    // Current user message
+    messages.push(ChatMessage {
+        role: "user".to_string(),
+        content: dialogue_text.to_string(),
+    });
+
+    messages
 }
 
 fn describe_action_type(action_type: &ActionType) -> String {
@@ -168,5 +195,132 @@ fn describe_action_type(action_type: &ActionType) -> String {
         ActionType::Error { message } => {
             format!("Error: {}", message)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn build_dialogue_messages_no_history() {
+        let settings = GameSettings::default();
+        let msgs = build_dialogue_messages(
+            "Merchant",
+            "formal and melancholic",
+            "Hello there",
+            &settings,
+            0,
+            &[],
+            &[],
+        );
+        // system + user = 2 messages
+        assert_eq!(msgs.len(), 2);
+        assert_eq!(msgs[0].role, "system");
+        assert!(msgs[0].content.contains("Merchant"));
+        assert!(msgs[0].content.contains("formal and melancholic"));
+        assert!(msgs[0].content.contains("neutral"));
+        assert_eq!(msgs[1].role, "user");
+        assert_eq!(msgs[1].content, "Hello there");
+    }
+
+    #[test]
+    fn build_dialogue_messages_with_history() {
+        let settings = GameSettings::default();
+        let history = vec![
+            ("user".to_string(), "What do you sell?".to_string()),
+            ("assistant".to_string(), "I sell fine wares.".to_string()),
+        ];
+        let msgs = build_dialogue_messages(
+            "Merchant",
+            "formal",
+            "How much for the sword?",
+            &settings,
+            0,
+            &[],
+            &history,
+        );
+        // system + 2 history + current user = 4 messages
+        assert_eq!(msgs.len(), 4);
+        assert_eq!(msgs[0].role, "system");
+        assert_eq!(msgs[1].role, "user");
+        assert_eq!(msgs[1].content, "What do you sell?");
+        assert_eq!(msgs[2].role, "assistant");
+        assert_eq!(msgs[2].content, "I sell fine wares.");
+        assert_eq!(msgs[3].role, "user");
+        assert_eq!(msgs[3].content, "How much for the sword?");
+    }
+
+    #[test]
+    fn build_dialogue_messages_caps_history_at_5() {
+        let settings = GameSettings::default();
+        let history: Vec<(String, String)> = (0..8)
+            .map(|i| ("user".to_string(), format!("msg {}", i)))
+            .collect();
+        let msgs = build_dialogue_messages(
+            "Guard",
+            "stern",
+            "current",
+            &settings,
+            0,
+            &[],
+            &history,
+        );
+        // system + 5 history + current user = 7 messages
+        assert_eq!(msgs.len(), 7);
+        // First history entry should be msg 3 (index 3), not msg 0
+        assert_eq!(msgs[1].content, "msg 3");
+        assert_eq!(msgs[5].content, "msg 7");
+        assert_eq!(msgs[6].content, "current");
+    }
+
+    #[test]
+    fn build_dialogue_messages_relationship_friendly() {
+        let settings = GameSettings::default();
+        let msgs = build_dialogue_messages(
+            "Friend",
+            "kind",
+            "hi",
+            &settings,
+            50,
+            &[],
+            &[],
+        );
+        assert!(msgs[0].content.contains("friendly and warm"));
+    }
+
+    #[test]
+    fn build_dialogue_messages_relationship_hostile() {
+        let settings = GameSettings::default();
+        let msgs = build_dialogue_messages(
+            "Enemy",
+            "gruff",
+            "hi",
+            &settings,
+            -50,
+            &[],
+            &[],
+        );
+        assert!(msgs[0].content.contains("hostile and suspicious"));
+    }
+
+    #[test]
+    fn build_dialogue_messages_with_memory() {
+        let settings = GameSettings::default();
+        let memory = vec![
+            NpcMemory { turn: 1, event: "talked".to_string() },
+            NpcMemory { turn: 2, event: "quest_accepted".to_string() },
+        ];
+        let msgs = build_dialogue_messages(
+            "Merchant",
+            "formal",
+            "hi",
+            &settings,
+            0,
+            &memory,
+            &[],
+        );
+        assert!(msgs[0].content.contains("quest_accepted"));
+        assert!(msgs[0].content.contains("talked"));
     }
 }

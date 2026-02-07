@@ -10,7 +10,7 @@ interface Props {
 
 export function Transition({
   show,
-  type = "fade",
+  type: _type = "fade",
   duration = 300,
   children,
   onExited,
@@ -18,6 +18,8 @@ export function Transition({
   const [mounted, setMounted] = useState(show);
   const [visible, setVisible] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onExitedRef = useRef(onExited);
+  onExitedRef.current = onExited;
 
   useEffect(() => {
     if (show) {
@@ -32,28 +34,26 @@ export function Transition({
       setVisible(false);
       timerRef.current = setTimeout(() => {
         setMounted(false);
-        onExited?.();
+        onExitedRef.current?.();
       }, duration);
     }
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [show, duration, onExited]);
+  }, [show, duration]);
 
   if (!mounted) return null;
 
+  // Use opacity-only transitions to avoid `transform` creating a new
+  // containing block, which breaks `position: fixed` in children.
   const baseStyle: React.CSSProperties = {
-    transition: `opacity ${duration}ms ease, transform ${duration}ms ease`,
+    transition: `opacity ${duration}ms ease`,
   };
 
-  const enterClass = visible
-    ? "opacity-100 translate-y-0"
-    : type === "slideUp"
-      ? "opacity-0 translate-y-4"
-      : "opacity-0";
+  const enterClass = visible ? "opacity-100" : "opacity-0";
 
   return (
-    <div className={`transition-transform ${enterClass}`} style={baseStyle}>
+    <div className={enterClass} style={baseStyle}>
       {children}
     </div>
   );

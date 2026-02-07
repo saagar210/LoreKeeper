@@ -28,11 +28,13 @@ export function trapFocus(container: HTMLElement): () => void {
 
   container.addEventListener("keydown", handleKeyDown);
 
-  // Focus first focusable element
+  // Save previously focused element and focus first focusable in trap
+  const previouslyFocused = document.activeElement as HTMLElement | null;
   const firstFocusable = container.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
   firstFocusable?.focus();
 
   return () => {
     container.removeEventListener("keydown", handleKeyDown);
+    previouslyFocused?.focus();
   };
 }

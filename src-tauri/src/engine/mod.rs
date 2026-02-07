@@ -1,5 +1,8 @@
+pub mod achievement_checker;
 pub mod combat;
+pub mod crafting;
 pub mod dialogue;
+pub mod dungeon_generator;
 pub mod events;
 pub mod executor;
 pub mod hints;

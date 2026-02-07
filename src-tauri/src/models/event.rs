@@ -9,6 +9,7 @@ pub enum EventTrigger {
     OnTake(String),
     OnUse(String),
     OnKill(String),
+    OnTurn(u32),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -20,6 +21,9 @@ pub enum EventAction {
     Message(String),
     GiveItem(String),
     SetQuestFlag(String),
+    ApplyStatus(super::player::StatusEffect),
+    RemoveStatus(String),
+    ChangeDescription(String, String),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

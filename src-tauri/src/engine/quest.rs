@@ -30,6 +30,7 @@ pub fn check_quest_progress(state: &mut WorldState) -> Vec<OutputLine> {
         if completed {
             if let Some(q) = state.quests.get_mut(&quest_id) {
                 q.completed = true;
+                q.completed_turn = Some(state.player.turns_elapsed);
             }
 
             // Check if quest giver is nearby for auto-complete
@@ -94,6 +95,7 @@ mod tests {
                 reward: vec![],
                 completed: false,
                 active: true,
+                completed_turn: None,
             },
         );
         state.npcs.insert(
@@ -111,6 +113,9 @@ mod tests {
                 defense: 0,
                 items: vec![],
                 quest_giver: Some("fetch_quest".into()),
+                examine_text: None,
+                relationship: 0,
+                memory: vec![],
             },
         );
         state.locations.insert(
@@ -126,6 +131,8 @@ mod tests {
                 visited: true,
                 discovered_secrets: vec![],
                 ambient_mood: Mood::Peaceful,
+                examine_details: None,
+                revisit_description: None,
             },
         );
 
@@ -155,6 +162,7 @@ mod tests {
                 reward: vec![],
                 completed: false,
                 active: true,
+                completed_turn: None,
             },
         );
         state.npcs.insert(
@@ -172,6 +180,9 @@ mod tests {
                 defense: 2,
                 items: vec![],
                 quest_giver: None,
+                examine_text: None,
+                relationship: 0,
+                memory: vec![],
             },
         );
         state.npcs.insert(
@@ -189,6 +200,9 @@ mod tests {
                 defense: 0,
                 items: vec![],
                 quest_giver: Some("kill_quest".into()),
+                examine_text: None,
+                relationship: 0,
+                memory: vec![],
             },
         );
         state.locations.insert(
@@ -204,6 +218,8 @@ mod tests {
                 visited: true,
                 discovered_secrets: vec![],
                 ambient_mood: Mood::Peaceful,
+                examine_details: None,
+                revisit_description: None,
             },
         );
 

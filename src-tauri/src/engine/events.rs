@@ -93,10 +93,122 @@ pub fn process_events(
             EventAction::SetQuestFlag(flag) => {
                 state.player.quest_flags.insert(flag.clone(), true);
             }
+            EventAction::ApplyStatus(effect) => {
+                let name = effect.name.clone();
+                state.player.status_effects.push(effect);
+                messages.push(OutputLine {
+                    text: format!("You are now affected by: {}", name),
+                    line_type: LineType::System,
+                });
+            }
+            EventAction::RemoveStatus(name) => {
+                state.player.status_effects.retain(|e| e.name != name);
+                messages.push(OutputLine {
+                    text: format!("{} has worn off.", name),
+                    line_type: LineType::System,
+                });
+            }
+            EventAction::ChangeDescription(loc_id, new_desc) => {
+                if let Some(loc) = state.locations.get_mut(&loc_id) {
+                    loc.description = new_desc;
+                }
+            }
         }
     }
 
     messages.retain(|m| !m.text.is_empty());
+    messages
+}
+
+pub fn process_turn_events(state: &mut WorldState) -> Vec<OutputLine> {
+    let mut messages = Vec::new();
+    let current_turn = state.player.turns_elapsed;
+    let location_id = state.player.location.clone();
+
+    // Process OnTurn trigger events
+    let mut actions_to_apply: Vec<EventAction> = Vec::new();
+    let mut events_to_mark_fired: Vec<usize> = Vec::new();
+
+    for (idx, event) in state.events.iter().enumerate() {
+        if event.one_shot && event.fired {
+            continue;
+        }
+        if let EventTrigger::OnTurn(turn) = &event.trigger {
+            if *turn == current_turn && event.location_id == location_id {
+                actions_to_apply.push(event.action.clone());
+                if event.one_shot {
+                    events_to_mark_fired.push(idx);
+                }
+            }
+        }
+    }
+
+    for idx in events_to_mark_fired {
+        state.events[idx].fired = true;
+    }
+
+    for action in actions_to_apply {
+        match action {
+            EventAction::Message(msg) => {
+                messages.push(OutputLine {
+                    text: msg,
+                    line_type: LineType::Narration,
+                });
+            }
+            EventAction::ApplyStatus(effect) => {
+                let name = effect.name.clone();
+                state.player.status_effects.push(effect);
+                messages.push(OutputLine {
+                    text: format!("You are now affected by: {}", name),
+                    line_type: LineType::System,
+                });
+            }
+            EventAction::RemoveStatus(name) => {
+                state.player.status_effects.retain(|e| e.name != name);
+                messages.push(OutputLine {
+                    text: format!("{} has worn off.", name),
+                    line_type: LineType::System,
+                });
+            }
+            EventAction::ChangeDescription(loc_id, new_desc) => {
+                if let Some(loc) = state.locations.get_mut(&loc_id) {
+                    loc.description = new_desc;
+                }
+            }
+            _ => {
+                // Other actions handled by process_events
+            }
+        }
+    }
+
+    // Tick down status effects
+    let mut expired = Vec::new();
+    for effect in &mut state.player.status_effects {
+        if effect.damage_per_turn != 0 {
+            state.player.health = (state.player.health - effect.damage_per_turn).max(0);
+            if effect.damage_per_turn > 0 {
+                messages.push(OutputLine {
+                    text: format!(
+                        "{} deals {} damage! (HP: {})",
+                        effect.name, effect.damage_per_turn, state.player.health
+                    ),
+                    line_type: LineType::Combat,
+                });
+            }
+        }
+        effect.turns_remaining -= 1;
+        if effect.turns_remaining <= 0 {
+            expired.push(effect.name.clone());
+        }
+    }
+    for name in &expired {
+        messages.push(OutputLine {
+            text: format!("{} has worn off.", name),
+            line_type: LineType::System,
+        });
+    }
+    state.player.status_effects.retain(|e| e.turns_remaining > 0);
+
     messages
 }
 
@@ -120,6 +232,8 @@ mod tests {
                 visited: false,
                 discovered_secrets: vec![],
                 ambient_mood: Mood::Peaceful,
+                examine_details: None,
+                revisit_description: None,
             },
         );
         state.player.location = "test_room".into();
@@ -174,5 +288,59 @@ mod tests {
         process_events(&trigger, "test_room", &mut state);
         let loc = state.locations.get("test_room").unwrap();
         assert!(!loc.locked_exits.contains_key(&Direction::North));
+    }
+
+    #[test]
+    fn test_turn_event_fires() {
+        let mut state = make_test_state();
+        state.player.turns_elapsed = 5;
+        state.events.push(GameEvent {
+            trigger: EventTrigger::OnTurn(5),
+            action: EventAction::Message("The ground trembles!".into()),
+            one_shot: true,
+            fired: false,
+            location_id: "test_room".into(),
+        });
+
+        let msgs = process_turn_events(&mut state);
+        assert_eq!(msgs.len(), 1);
+        assert!(msgs[0].text.contains("The ground trembles!"));
+        assert!(state.events[0].fired);
+
+        // Should not fire again (one_shot)
+        let msgs2 = process_turn_events(&mut state);
+        assert!(msgs2.is_empty());
+    }
+
+    #[test]
+    fn test_status_effect_tick_down() {
+        let mut state = make_test_state();
+        state.player.status_effects.push(StatusEffect {
+            effect_type: StatusEffectType::Poison,
+            name: "Poison".into(),
+            turns_remaining: 3,
+            damage_per_turn: 5,
+            attack_modifier: 0,
+            defense_modifier: 0,
+        });
+
+        let msgs = process_turn_events(&mut state);
+        // Should deal 5 damage
+        assert_eq!(state.player.health, 95);
+        assert!(msgs.iter().any(|m| m.text.contains("Poison deals 5 damage")));
+        // Turns remaining should be decremented to 2
+        assert_eq!(state.player.status_effects.len(), 1);
+        assert_eq!(state.player.status_effects[0].turns_remaining, 2);
+
+        // Tick again
+        process_turn_events(&mut state);
+        assert_eq!(state.player.health, 90);
+        assert_eq!(state.player.status_effects[0].turns_remaining, 1);
+
+        // Tick again — should expire
+        let msgs3 = process_turn_events(&mut state);
+        assert_eq!(state.player.health, 85);
+        assert!(msgs3.iter().any(|m| m.text.contains("has worn off")));
+        assert!(state.player.status_effects.is_empty());
     }
 }

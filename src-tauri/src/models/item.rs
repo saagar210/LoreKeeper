@@ -33,6 +33,8 @@ pub struct Item {
     pub usable: bool,
     pub consumable: bool,
     pub key_id: Option<String>,
+    #[serde(default)]
+    pub lore: Option<String>,
 }
 
 #[cfg(test)]
@@ -54,6 +56,7 @@ mod tests {
             usable: false,
             consumable: false,
             key_id: None,
+            lore: None,
         };
         let json = serde_json::to_string(&item).unwrap();
         assert!(json.contains("itemType"));

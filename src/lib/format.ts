@@ -1,5 +1,16 @@
+export function formatDate(isoString: string): string {
+  const date = new Date(isoString);
+  if (isNaN(date.getTime())) return "unknown";
+  return date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
 export function formatRelativeTime(isoString: string): string {
   const date = new Date(isoString);
+  if (isNaN(date.getTime())) return "unknown";
   const now = Date.now();
   const diffMs = now - date.getTime();
 

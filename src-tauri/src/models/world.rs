@@ -1,12 +1,22 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use super::crafting::CraftingRecipe;
 use super::event::GameEvent;
 use super::item::Item;
+use super::journal::JournalEntry;
 use super::location::Location;
 use super::npc::Npc;
 use super::player::Player;
 use super::quest::Quest;
+use super::settings::Difficulty;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DialogueHistoryEntry {
+    pub role: String,
+    pub text: String,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -63,12 +73,36 @@ pub struct NarrativeContext {
     pub turns_elapsed: u32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum SoundCue {
+    AmbientPeaceful,
+    AmbientDark,
+    AmbientTense,
+    AmbientSacred,
+    CombatHit,
+    CombatMiss,
+    CombatVictory,
+    ItemPickup,
+    ItemDrop,
+    ItemUse,
+    DoorUnlock,
+    QuestComplete,
+    QuestStart,
+    PlayerDeath,
+    NpcGreeting,
+    FleeSuccess,
+    FleeFail,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActionResult {
     pub messages: Vec<OutputLine>,
     pub action_type: ActionType,
     pub narrative_context: Option<NarrativeContext>,
+    #[serde(default)]
+    pub sound_cues: Vec<SoundCue>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -76,6 +110,8 @@ pub struct ActionResult {
 pub struct CommandResponse {
     pub messages: Vec<OutputLine>,
     pub world_state: WorldState,
+    #[serde(default)]
+    pub sound_cues: Vec<SoundCue>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -105,6 +141,15 @@ pub struct CombatState {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct CommandLogEntry {
+    pub turn: u32,
+    pub input: String,
+    pub location: String,
+    pub timestamp_ms: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CombatLogEntry {
     pub turn: u32,
     pub attacker: String,
@@ -129,6 +174,16 @@ pub struct WorldState {
     pub combat_log: Vec<CombatLogEntry>,
     pub last_narrative_context: Option<NarrativeContext>,
     pub initialized: bool,
+    #[serde(default)]
+    pub difficulty: Difficulty,
+    #[serde(default)]
+    pub journal: Vec<JournalEntry>,
+    #[serde(default)]
+    pub recipes: Vec<CraftingRecipe>,
+    #[serde(default)]
+    pub dialogue_history: Vec<DialogueHistoryEntry>,
+    #[serde(default)]
+    pub command_log: Vec<CommandLogEntry>,
 }
 
 impl Default for WorldState {
@@ -146,6 +201,11 @@ impl Default for WorldState {
             combat_log: Vec::new(),
             last_narrative_context: None,
             initialized: false,
+            difficulty: Difficulty::default(),
+            journal: Vec::new(),
+            recipes: Vec::new(),
+            dialogue_history: Vec::new(),
+            command_log: Vec::new(),
         }
     }
 }
@@ -178,6 +238,29 @@ mod tests {
             let deserialized: GameMode = serde_json::from_str(&json).unwrap();
             assert_eq!(deserialized, mode);
         }
+    }
+
+    #[test]
+    fn command_log_entry_serde_roundtrip() {
+        let entry = CommandLogEntry {
+            turn: 5,
+            input: "go north".to_string(),
+            location: "courtyard".to_string(),
+            timestamp_ms: 1700000000000,
+        };
+        let json = serde_json::to_string(&entry).unwrap();
+        assert!(json.contains("timestampMs"));
+        let deserialized: CommandLogEntry = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.turn, 5);
+        assert_eq!(deserialized.input, "go north");
+        assert_eq!(deserialized.location, "courtyard");
+        assert_eq!(deserialized.timestamp_ms, 1700000000000);
+    }
+
+    #[test]
+    fn world_state_default_has_empty_command_log() {
+        let ws = WorldState::default();
+        assert!(ws.command_log.is_empty());
     }
 
     #[test]

@@ -4,12 +4,15 @@ interface Props {
   onSettings: () => void;
   onStats?: () => void;
   onModules?: () => void;
+  onAchievements?: () => void;
+  onReplays?: () => void;
+  onEditor?: () => void;
 }
 
-export function TitleScreen({ onNewGame, onLoadGame, onSettings, onStats, onModules }: Props) {
+export function TitleScreen({ onNewGame, onLoadGame, onSettings, onStats, onModules, onAchievements, onReplays, onEditor }: Props) {
   return (
     <div className="flex h-full flex-col items-center justify-center bg-[var(--bg)] font-mono">
-      <pre className="mb-8 text-[var(--accent)] text-xs leading-tight">
+      <pre className="mb-8 text-[var(--accent)] text-xs leading-tight" aria-hidden="true">
 {`
  _                   _  __                         
 | |    ___  _ __ ___| |/ /___  ___ _ __   ___ _ __ 
@@ -53,6 +56,30 @@ export function TitleScreen({ onNewGame, onLoadGame, onSettings, onStats, onModu
             className="w-48 border border-[var(--text-dim)] px-6 py-2 text-[var(--text-dim)] transition-colors hover:bg-[var(--text-dim)] hover:text-[var(--bg)]"
           >
             Game Modules
+          </button>
+        )}
+        {onAchievements && (
+          <button
+            onClick={onAchievements}
+            className="w-48 border border-[var(--text-dim)] px-6 py-2 text-[var(--text-dim)] transition-colors hover:bg-[var(--text-dim)] hover:text-[var(--bg)]"
+          >
+            Achievements
+          </button>
+        )}
+        {onReplays && (
+          <button
+            onClick={onReplays}
+            className="w-48 border border-[var(--text-dim)] px-6 py-2 text-[var(--text-dim)] transition-colors hover:bg-[var(--text-dim)] hover:text-[var(--bg)]"
+          >
+            Replays
+          </button>
+        )}
+        {onEditor && (
+          <button
+            onClick={onEditor}
+            className="w-48 border border-[var(--text-dim)] px-6 py-2 text-[var(--text-dim)] transition-colors hover:bg-[var(--text-dim)] hover:text-[var(--bg)]"
+          >
+            Map Editor
           </button>
         )}
       </div>

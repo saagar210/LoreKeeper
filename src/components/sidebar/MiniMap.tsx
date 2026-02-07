@@ -11,9 +11,17 @@ export function MiniMap({ locations, player }: Props) {
   const [mapData, setMapData] = useState<MapData | null>(null);
 
   useEffect(() => {
+    let ignore = false;
     invoke<MapData>("get_map_data")
-      .then(setMapData)
-      .catch(() => setMapData(null));
+      .then((data) => {
+        if (!ignore) setMapData(data);
+      })
+      .catch(() => {
+        if (!ignore) setMapData(null);
+      });
+    return () => {
+      ignore = true;
+    };
   }, [player.location, Object.keys(locations).length]);
 
   if (!mapData) {
@@ -28,11 +36,12 @@ export function MiniMap({ locations, player }: Props) {
   // Build a lookup for node positions
   const nodeMap = new Map(mapData.nodes.map((n) => [n.id, n]));
 
-  // SVG dimensions to fit the data
+  // SVG dimensions to fit the data (dynamic height for dungeon rooms)
   const padding = 20;
   const nodeRadius = 8;
   const svgWidth = 280;
-  const svgHeight = 420;
+  const maxY = Math.max(...mapData.nodes.map((n) => n.y), 400);
+  const svgHeight = maxY + 40;
 
   return (
     <div>

@@ -4,8 +4,8 @@ use crate::models::{GameMode, WorldState};
 use crate::persistence::state::GameState;
 
 const BASE_COMMANDS: &[&str] = &[
-    "look", "go", "take", "drop", "use", "equip", "unequip", "talk", "attack", "flee",
-    "inventory", "map", "quests", "help", "save", "load",
+    "look", "examine", "go", "take", "drop", "use", "equip", "unequip", "talk", "attack", "flee",
+    "inventory", "map", "quests", "codex", "help", "save", "load", "craft", "combine",
 ];
 
 const DIRECTIONS: &[&str] = &["north", "south", "east", "west", "up", "down"];
@@ -27,29 +27,40 @@ pub fn get_completions(prefix: String, game_state: State<GameState>) -> Result<V
         let verb = &prefix_lower[..space_idx];
         let arg = prefix_lower[space_idx + 1..].trim_start();
 
-        match verb {
+        // Handle "pick up <item>" as a two-word verb
+        let (effective_verb, effective_arg) = if verb == "pick" && arg.starts_with("up") {
+            let rest = arg.strip_prefix("up").unwrap_or("").trim_start();
+            ("pick up", rest)
+        } else {
+            (verb, arg)
+        };
+
+        match effective_verb {
             "go" | "move" | "walk" | "head" => {
-                candidates.extend(direction_completions(arg, &state));
+                candidates.extend(direction_completions(effective_arg, &state));
             }
-            "take" | "get" | "grab" | "pick" => {
-                candidates.extend(room_item_completions(arg, &state));
+            "take" | "get" | "grab" | "pick up" | "pick" => {
+                candidates.extend(room_item_completions(effective_arg, &state));
             }
             "drop" | "use" | "equip" => {
-                candidates.extend(inventory_completions(arg, &state));
+                candidates.extend(inventory_completions(effective_arg, &state));
             }
             "unequip" | "remove" => {
-                candidates.extend(equipped_completions(arg, &state));
+                candidates.extend(equipped_completions(effective_arg, &state));
             }
             "talk" | "speak" | "ask" | "chat" => {
-                candidates.extend(npc_completions(arg, &state));
+                candidates.extend(npc_completions(effective_arg, &state));
             }
             "attack" | "fight" | "hit" | "kill" | "strike" => {
-                candidates.extend(npc_completions(arg, &state));
+                candidates.extend(npc_completions(effective_arg, &state));
             }
             "look" | "examine" | "inspect" => {
-                candidates.extend(room_item_completions(arg, &state));
-                candidates.extend(inventory_completions(arg, &state));
-                candidates.extend(npc_completions(arg, &state));
+                candidates.extend(room_item_completions(effective_arg, &state));
+                candidates.extend(inventory_completions(effective_arg, &state));
+                candidates.extend(npc_completions(effective_arg, &state));
+            }
+            "craft" | "combine" | "mix" => {
+                candidates.extend(inventory_completions(effective_arg, &state));
             }
             "save" | "load" => {
                 // No argument completions for save/load
@@ -60,7 +71,7 @@ pub fn get_completions(prefix: String, game_state: State<GameState>) -> Result<V
         // Prefix the verb back
         candidates = candidates
             .into_iter()
-            .map(|c| format!("{} {}", verb, c))
+            .map(|c| format!("{} {}", effective_verb, c))
             .collect();
     } else {
         // Complete the command verb itself

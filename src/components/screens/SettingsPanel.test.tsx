@@ -75,10 +75,22 @@ describe("SettingsPanel", () => {
     const user = userEvent.setup();
     render(<SettingsPanel onClose={vi.fn()} onThemeChange={vi.fn()} />);
 
-    const checkbox = screen.getByRole("checkbox");
+    const checkbox = screen.getByRole("checkbox", { name: /Enable LLM Narration/ });
     await user.click(checkbox);
 
     expect(mockUpdateSettings).toHaveBeenCalledWith({ ollamaEnabled: true });
+  });
+
+  it("shows sound effects toggle", () => {
+    render(<SettingsPanel onClose={vi.fn()} onThemeChange={vi.fn()} />);
+    expect(screen.getByRole("checkbox", { name: /Sound Effects/ })).toBeInTheDocument();
+  });
+
+  it("shows difficulty buttons", () => {
+    render(<SettingsPanel onClose={vi.fn()} onThemeChange={vi.fn()} />);
+    expect(screen.getByText("easy")).toBeInTheDocument();
+    expect(screen.getByText("normal")).toBeInTheDocument();
+    expect(screen.getByText("hard")).toBeInTheDocument();
   });
 
   it("shows model selector when Ollama enabled", () => {

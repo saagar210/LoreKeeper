@@ -29,6 +29,7 @@ export interface Item {
   usable: boolean;
   consumable: boolean;
   keyId: string | null;
+  lore: string | null;
 }
 
 export interface Location {
@@ -42,6 +43,19 @@ export interface Location {
   visited: boolean;
   discoveredSecrets: string[];
   ambientMood: Mood;
+  examineDetails: string | null;
+  revisitDescription: string | null;
+}
+
+export type StatusEffectType = "poison" | "blessed" | "weakened" | "burning";
+
+export interface StatusEffect {
+  effectType: StatusEffectType;
+  name: string;
+  turnsRemaining: number;
+  damagePerTurn: number;
+  attackModifier: number;
+  defenseModifier: number;
 }
 
 export interface Player {
@@ -57,6 +71,13 @@ export interface Player {
   questFlags: Record<string, boolean>;
   visitedLocations: string[];
   turnsElapsed: number;
+  statusEffects: StatusEffect[];
+  discoveredSecrets: string[];
+}
+
+export interface NpcMemory {
+  turn: number;
+  event: string;
 }
 
 export interface Npc {
@@ -72,6 +93,9 @@ export interface Npc {
   defense: number;
   items: string[];
   questGiver: string | null;
+  examineText: string | null;
+  relationship: number;
+  memory: NpcMemory[];
 }
 
 export interface QuestObjective {
@@ -89,6 +113,30 @@ export interface Quest {
   reward: string[];
   completed: boolean;
   active: boolean;
+  completedTurn: number | null;
+}
+
+export type JournalCategory = "lore" | "bestiary" | "location" | "item";
+
+export interface JournalEntry {
+  id: string;
+  category: JournalCategory;
+  title: string;
+  content: string;
+  discoveredTurn: number;
+}
+
+export interface CraftingRecipe {
+  id: string;
+  inputs: string[];
+  output: string;
+  hint: string;
+  discovered: boolean;
+}
+
+export interface DialogueHistoryEntry {
+  role: string;
+  text: string;
 }
 
 export interface GameEvent {
@@ -118,6 +166,11 @@ export interface WorldState {
   combatLog: CombatLogEntry[];
   lastNarrativeContext: NarrativeContext | null;
   initialized: boolean;
+  difficulty: Difficulty;
+  journal: JournalEntry[];
+  recipes: CraftingRecipe[];
+  dialogueHistory: DialogueHistoryEntry[];
+  commandLog: CommandLogEntry[];
 }
 
 export interface OutputLine {
@@ -128,6 +181,7 @@ export interface OutputLine {
 export interface CommandResponse {
   messages: OutputLine[];
   worldState: WorldState;
+  soundCues: SoundCue[];
 }
 
 export interface SaveSlotInfo {
@@ -148,6 +202,9 @@ export interface GameSettings {
   typewriterSpeed: number;
   theme: ThemeName;
   narrationVerbosity: string;
+  soundEnabled: boolean;
+  soundVolume: number;
+  difficulty: Difficulty;
 }
 
 export interface OllamaStatus {
@@ -222,6 +279,84 @@ export interface ModuleInfo {
   path: string;
   locationCount: number;
   itemCount: number;
+}
+
+export type Difficulty = "easy" | "normal" | "hard";
+
+export type SoundCue =
+  | "ambientPeaceful"
+  | "ambientDark"
+  | "ambientTense"
+  | "ambientSacred"
+  | "combatHit"
+  | "combatMiss"
+  | "combatVictory"
+  | "itemPickup"
+  | "itemDrop"
+  | "itemUse"
+  | "doorUnlock"
+  | "questComplete"
+  | "questStart"
+  | "playerDeath"
+  | "npcGreeting"
+  | "fleeSuccess"
+  | "fleeFail";
+
+export interface AchievementInfo {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  unlocked: boolean;
+  unlockedAt: string | null;
+}
+
+export interface CommandLogEntry {
+  turn: number;
+  input: string;
+  location: string;
+  timestampMs: number;
+}
+
+export interface ReplayInfo {
+  id: number;
+  endedAt: string;
+  endingType: string | null;
+  turnsTaken: number | null;
+  questsCompleted: number | null;
+  commandCount: number;
+}
+
+export interface ReplayDetail {
+  info: ReplayInfo;
+  commands: CommandLogEntry[];
+}
+
+export interface ValidationResult {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+export interface EditorRoom {
+  id: string;
+  name: string;
+  description: string;
+  x: number;
+  y: number;
+  mood: Mood;
+  items: string[];
+  npcs: string[];
+  examineDetails: string | null;
+}
+
+export interface EditorConnection {
+  fromId: string;
+  toId: string;
+  fromDir: Direction;
+  toDir: Direction;
+  locked: boolean;
+  keyId: string | null;
 }
 
 export type Screen = "title" | "game" | "settings" | "saveload";

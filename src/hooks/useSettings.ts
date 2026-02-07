@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { GameSettings, ModelInfo, OllamaStatus } from "../store/types";
 
 const DEFAULT_SETTINGS: GameSettings = {
@@ -11,6 +11,9 @@ const DEFAULT_SETTINGS: GameSettings = {
   typewriterSpeed: 30,
   theme: "greenTerminal",
   narrationVerbosity: "normal",
+  soundEnabled: false,
+  soundVolume: 0.5,
+  difficulty: "normal",
 };
 
 export function useSettings() {
@@ -27,9 +30,12 @@ export function useSettings() {
       .catch((err) => console.warn("Failed to load settings:", err));
   }, []);
 
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+
   const updateSettings = useCallback(
     async (partial: Partial<GameSettings>) => {
-      const updated = { ...settings, ...partial };
+      const updated = { ...settingsRef.current, ...partial };
       try {
         await invoke("update_settings", { settings: updated });
         setSettings(updated);
@@ -37,7 +43,7 @@ export function useSettings() {
         console.error("Failed to update settings:", err);
       }
     },
-    [settings],
+    [],
   );
 
   const checkOllama = useCallback(async () => {

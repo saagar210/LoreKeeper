@@ -1,11 +1,22 @@
-import type { Item, Player } from "../../store/types";
+import { useMemo } from "react";
+import type { CraftingRecipe, Item, Player } from "../../store/types";
 
 interface Props {
   player: Player;
   items: Record<string, Item>;
+  recipes?: CraftingRecipe[];
 }
 
-export function InventoryPanel({ player, items }: Props) {
+export function InventoryPanel({ player, items, recipes = [] }: Props) {
+  const hasCraftable = useMemo(() => {
+    const inventorySet = new Set(player.inventory);
+    return recipes.some(
+      (recipe) =>
+        !recipe.discovered &&
+        recipe.inputs.every((input) => inventorySet.has(input)),
+    );
+  }, [player.inventory, recipes]);
+
   return (
     <div>
       <h3 className="mb-2 font-bold text-[var(--accent)]">
@@ -34,6 +45,11 @@ export function InventoryPanel({ player, items }: Props) {
             );
           })}
         </ul>
+      )}
+      {hasCraftable && (
+        <p className="mt-2 text-[var(--accent)] text-xs animate-pulse">
+          Craftable items available!
+        </p>
       )}
     </div>
   );

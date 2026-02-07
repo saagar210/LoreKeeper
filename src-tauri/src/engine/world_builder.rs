@@ -9,6 +9,7 @@ pub fn build_thornhold() -> WorldState {
         npcs: build_npcs(),
         quests: build_quests(),
         events: build_events(),
+        recipes: build_recipes(),
         initialized: true,
         ..Default::default()
     }
@@ -31,6 +32,8 @@ fn build_locations() -> HashMap<String, Location> {
         visited: true,
         discovered_secrets: vec![],
         ambient_mood: Mood::Peaceful,
+        examine_details: Some("The flagstones bear scorch marks from an ancient battle. Faded carvings on the walls depict merchants trading goods. A broken fountain stands in the center, its basin cracked and dry.".into()),
+        revisit_description: Some("The courtyard is as bleak as before. The cold wind still whispers.".into()),
     });
 
     locs.insert("great_hall".into(), Location {
@@ -51,6 +54,8 @@ fn build_locations() -> HashMap<String, Location> {
         visited: false,
         discovered_secrets: vec![],
         ambient_mood: Mood::Mysterious,
+        examine_details: Some("The banners bear the crest of House Thornhold — a tower wreathed in thorns. Claw marks gouge the stone floor near the fireplace. A faint draft comes from behind the eastern wall.".into()),
+        revisit_description: Some("The great hall looms in familiar shadow. The cold fireplace watches like a dark eye.".into()),
     });
 
     locs.insert("tower_apex".into(), Location {
@@ -66,6 +71,8 @@ fn build_locations() -> HashMap<String, Location> {
         visited: false,
         discovered_secrets: vec![],
         ambient_mood: Mood::Tense,
+        examine_details: Some("From here you can see the entire ruin spread below. Scratches on the window frame suggest someone — or something — tried to climb in. A weathervane creaks overhead, pointing eternally north.".into()),
+        revisit_description: None,
     });
 
     locs.insert("library".into(), Location {
@@ -82,6 +89,8 @@ fn build_locations() -> HashMap<String, Location> {
         visited: false,
         discovered_secrets: vec![],
         ambient_mood: Mood::Mysterious,
+        examine_details: Some("Many books have been deliberately torn apart. One shelf holds a collection of sealed scrolls. The dust on the floor shows no footprints — you are the first visitor in ages.".into()),
+        revisit_description: Some("The library's dusty silence greets you once more.".into()),
     });
 
     locs.insert("barracks".into(), Location {
@@ -99,6 +108,8 @@ fn build_locations() -> HashMap<String, Location> {
         visited: false,
         discovered_secrets: vec![],
         ambient_mood: Mood::Tense,
+        examine_details: None,
+        revisit_description: None,
     });
 
     locs.insert("kitchen".into(), Location {
@@ -117,6 +128,8 @@ fn build_locations() -> HashMap<String, Location> {
         visited: false,
         discovered_secrets: vec![],
         ambient_mood: Mood::Peaceful,
+        examine_details: None,
+        revisit_description: None,
     });
 
     locs.insert("chapel".into(), Location {
@@ -136,6 +149,8 @@ fn build_locations() -> HashMap<String, Location> {
         visited: false,
         discovered_secrets: vec![],
         ambient_mood: Mood::Sacred,
+        examine_details: Some("The stained glass depicts the founding of Thornhold. The altar bears scratch marks, as if something tried to deface it. A faint warmth radiates from the stone.".into()),
+        revisit_description: Some("The chapel's colored light washes over you again. The altar waits patiently.".into()),
     });
 
     locs.insert("armory".into(), Location {
@@ -151,6 +166,8 @@ fn build_locations() -> HashMap<String, Location> {
         visited: false,
         discovered_secrets: vec![],
         ambient_mood: Mood::Tense,
+        examine_details: None,
+        revisit_description: None,
     });
 
     locs.insert("cellar_entrance".into(), Location {
@@ -167,6 +184,8 @@ fn build_locations() -> HashMap<String, Location> {
         visited: false,
         discovered_secrets: vec![],
         ambient_mood: Mood::Dark,
+        examine_details: None,
+        revisit_description: None,
     });
 
     locs.insert("wine_cellar".into(), Location {
@@ -183,6 +202,8 @@ fn build_locations() -> HashMap<String, Location> {
         visited: false,
         discovered_secrets: vec![],
         ambient_mood: Mood::Dark,
+        examine_details: None,
+        revisit_description: None,
     });
 
     locs.insert("crypt_passage".into(), Location {
@@ -200,6 +221,8 @@ fn build_locations() -> HashMap<String, Location> {
         visited: false,
         discovered_secrets: vec![],
         ambient_mood: Mood::Dark,
+        examine_details: None,
+        revisit_description: None,
     });
 
     locs.insert("deep_chamber".into(), Location {
@@ -216,6 +239,8 @@ fn build_locations() -> HashMap<String, Location> {
         visited: false,
         discovered_secrets: vec![],
         ambient_mood: Mood::Dangerous,
+        examine_details: Some("The runes on the walls shift when you look away. The fungi pulse in a rhythm like a heartbeat. Chains embedded in the far wall have been snapped, links scattered across the floor.".into()),
+        revisit_description: None,
     });
 
     locs.insert("final_sanctum".into(), Location {
@@ -231,6 +256,25 @@ fn build_locations() -> HashMap<String, Location> {
         visited: false,
         discovered_secrets: vec![],
         ambient_mood: Mood::Dangerous,
+        examine_details: Some("The chains binding the figure are inscribed with names — perhaps those who placed them. The eldritch light emanates from a crack in the floor. The air tastes of copper and ozone.".into()),
+        revisit_description: None,
+    });
+
+    locs.insert("hidden_vault".into(), Location {
+        id: "hidden_vault".into(),
+        name: "The Hidden Vault".into(),
+        description: "A secret chamber behind the walls. Dust motes dance in a shaft of light from a crack in the ceiling. Ancient treasures and forgotten relics line the shelves.".into(),
+        items: vec!["vault_amulet".into()],
+        npcs: vec![],
+        exits: HashMap::from([
+            (Direction::Up, "great_hall".into()),
+        ]),
+        locked_exits: HashMap::new(),
+        visited: false,
+        discovered_secrets: vec![],
+        ambient_mood: Mood::Mysterious,
+        examine_details: Some("The shelves hold trinkets from across the ages — a child's toy, a soldier's medal, a lover's locket. Each tells a story of Thornhold's past.".into()),
+        revisit_description: Some("The hidden vault is as you left it. The treasures gleam in the dim light.".into()),
     });
 
     locs
@@ -249,6 +293,7 @@ fn build_items() -> HashMap<String, Item> {
         usable: false,
         consumable: false,
         key_id: None,
+        lore: Some("Forged by the smiths of Thornhold in its golden age. The maker's mark — a tiny tower — is etched near the hilt.".into()),
     });
 
     items.insert("rusty_dagger".into(), Item {
@@ -260,6 +305,7 @@ fn build_items() -> HashMap<String, Item> {
         usable: false,
         consumable: false,
         key_id: None,
+        lore: None,
     });
 
     // Armor
@@ -272,6 +318,7 @@ fn build_items() -> HashMap<String, Item> {
         usable: false,
         consumable: false,
         key_id: None,
+        lore: None,
     });
 
     items.insert("iron_shield".into(), Item {
@@ -283,6 +330,7 @@ fn build_items() -> HashMap<String, Item> {
         usable: false,
         consumable: false,
         key_id: None,
+        lore: None,
     });
 
     // Consumables
@@ -295,6 +343,7 @@ fn build_items() -> HashMap<String, Item> {
         usable: true,
         consumable: true,
         key_id: None,
+        lore: None,
     });
 
     items.insert("stale_bread".into(), Item {
@@ -306,6 +355,7 @@ fn build_items() -> HashMap<String, Item> {
         usable: true,
         consumable: true,
         key_id: None,
+        lore: None,
     });
 
     items.insert("cellar_cheese".into(), Item {
@@ -317,6 +367,7 @@ fn build_items() -> HashMap<String, Item> {
         usable: true,
         consumable: true,
         key_id: None,
+        lore: None,
     });
 
     // Keys
@@ -329,6 +380,7 @@ fn build_items() -> HashMap<String, Item> {
         usable: false,
         consumable: false,
         key_id: Some("library".into()),
+        lore: None,
     });
 
     // Scrolls
@@ -341,6 +393,7 @@ fn build_items() -> HashMap<String, Item> {
         usable: true,
         consumable: true,
         key_id: None,
+        lore: Some("Written by the last priest of Thornhold before the fall. The ink shimmers with divine power that has endured centuries.".into()),
     });
 
     // Quest items
@@ -353,6 +406,7 @@ fn build_items() -> HashMap<String, Item> {
         usable: true,
         consumable: false,
         key_id: None,
+        lore: None,
     });
 
     items.insert("silver_chalice".into(), Item {
@@ -364,6 +418,7 @@ fn build_items() -> HashMap<String, Item> {
         usable: false,
         consumable: false,
         key_id: None,
+        lore: None,
     });
 
     items.insert("ancient_amulet".into(), Item {
@@ -375,6 +430,7 @@ fn build_items() -> HashMap<String, Item> {
         usable: false,
         consumable: false,
         key_id: None,
+        lore: Some("One of the sealing artifacts used to bind The Forgotten One. Its power has weakened over the centuries but still resonates with protective magic.".into()),
     });
 
     items.insert("mysterious_orb".into(), Item {
@@ -386,6 +442,7 @@ fn build_items() -> HashMap<String, Item> {
         usable: false,
         consumable: false,
         key_id: None,
+        lore: Some("The concentrated essence of The Forgotten One's power. Holding it grants visions of a world before Thornhold, when gods walked the earth.".into()),
     });
 
     // Miscellaneous
@@ -398,6 +455,7 @@ fn build_items() -> HashMap<String, Item> {
         usable: false,
         consumable: false,
         key_id: None,
+        lore: None,
     });
 
     items.insert("torn_tapestry".into(), Item {
@@ -409,6 +467,7 @@ fn build_items() -> HashMap<String, Item> {
         usable: false,
         consumable: false,
         key_id: None,
+        lore: None,
     });
 
     items.insert("old_spyglass".into(), Item {
@@ -420,6 +479,7 @@ fn build_items() -> HashMap<String, Item> {
         usable: false,
         consumable: false,
         key_id: None,
+        lore: None,
     });
 
     items.insert("quill_pen".into(), Item {
@@ -431,6 +491,7 @@ fn build_items() -> HashMap<String, Item> {
         usable: false,
         consumable: false,
         key_id: None,
+        lore: None,
     });
 
     items.insert("dusty_tome".into(), Item {
@@ -442,6 +503,7 @@ fn build_items() -> HashMap<String, Item> {
         usable: false,
         consumable: false,
         key_id: None,
+        lore: Some("Chronicles the founding of Thornhold as a prison for an ancient being. The final chapter, written in a shaking hand, warns that the binding weakens with each passing century.".into()),
     });
 
     items.insert("empty_bottle".into(), Item {
@@ -453,6 +515,7 @@ fn build_items() -> HashMap<String, Item> {
         usable: false,
         consumable: false,
         key_id: None,
+        lore: None,
     });
 
     items.insert("bone_fragment".into(), Item {
@@ -464,6 +527,7 @@ fn build_items() -> HashMap<String, Item> {
         usable: false,
         consumable: false,
         key_id: None,
+        lore: None,
     });
 
     items.insert("torch".into(), Item {
@@ -475,9 +539,85 @@ fn build_items() -> HashMap<String, Item> {
         usable: false,
         consumable: false,
         key_id: None,
+        lore: None,
+    });
+
+    // Crafted items
+    items.insert("makeshift_bandage".into(), Item {
+        id: "makeshift_bandage".into(),
+        name: "Makeshift Bandage".into(),
+        description: "A crude bandage fashioned from torn tapestry cloth, bound with a quill pen.".into(),
+        item_type: ItemType::Consumable,
+        modifier: Some(StatModifier { attack: 0, defense: 0, health: 20 }),
+        usable: true,
+        consumable: true,
+        key_id: None,
+        lore: Some("Resourcefulness in desperate times. The tapestry of Thornhold's history now serves to heal.".into()),
+    });
+
+    items.insert("lit_lantern".into(), Item {
+        id: "lit_lantern".into(),
+        name: "Lit Lantern".into(),
+        description: "The rusty lantern now burns with a steady flame, pushing back the darkness.".into(),
+        item_type: ItemType::Miscellaneous,
+        modifier: Some(StatModifier { attack: 0, defense: 1, health: 0 }),
+        usable: false,
+        consumable: false,
+        key_id: None,
+        lore: Some("Even the oldest tools can serve again when given purpose.".into()),
+    });
+
+    items.insert("bone_talisman".into(), Item {
+        id: "bone_talisman".into(),
+        name: "Bone Talisman".into(),
+        description: "A fragment of ancient bone set into a silver chalice base. It radiates protective energy.".into(),
+        item_type: ItemType::Miscellaneous,
+        modifier: Some(StatModifier { attack: 1, defense: 3, health: 0 }),
+        usable: false,
+        consumable: false,
+        key_id: None,
+        lore: Some("The silver purifies while the bone remembers. Together they ward against the darkness below.".into()),
+    });
+
+    items.insert("vault_amulet".into(), Item {
+        id: "vault_amulet".into(),
+        name: "Vault Amulet".into(),
+        description: "A perfectly preserved amulet of deep blue crystal. It thrums with a steady, protective pulse.".into(),
+        item_type: ItemType::Miscellaneous,
+        modifier: Some(StatModifier { attack: 3, defense: 5, health: 0 }),
+        usable: false,
+        consumable: false,
+        key_id: None,
+        lore: Some("One of the original warding stones of Thornhold. Only those who know the old words can find where it is hidden.".into()),
     });
 
     items
+}
+
+fn build_recipes() -> Vec<CraftingRecipe> {
+    vec![
+        CraftingRecipe {
+            id: "makeshift_bandage".into(),
+            inputs: vec!["torn_tapestry".into(), "quill_pen".into()],
+            output: "makeshift_bandage".into(),
+            hint: "Something torn could bind a wound with the right tool...".into(),
+            discovered: false,
+        },
+        CraftingRecipe {
+            id: "lantern_torch".into(),
+            inputs: vec!["rusty_lantern".into(), "torch".into()],
+            output: "lit_lantern".into(),
+            hint: "A lantern needs a flame...".into(),
+            discovered: false,
+        },
+        CraftingRecipe {
+            id: "bone_talisman".into(),
+            inputs: vec!["bone_fragment".into(), "silver_chalice".into()],
+            output: "bone_talisman".into(),
+            hint: "Bone and silver have warding properties...".into(),
+            discovered: false,
+        },
+    ]
 }
 
 fn build_npcs() -> HashMap<String, Npc> {
@@ -496,6 +636,9 @@ fn build_npcs() -> HashMap<String, Npc> {
         defense: 0,
         items: vec![],
         quest_giver: Some("merchants_unfinished_business".into()),
+        examine_text: Some("His robes bear the insignia of the Thornhold Merchant Guild. A heavy ledger hangs from a spectral chain at his belt. His expression carries centuries of regret.".into()),
+        relationship: 0,
+        memory: vec![],
     });
 
     npcs.insert("gristle_rat".into(), Npc {
@@ -511,6 +654,9 @@ fn build_npcs() -> HashMap<String, Npc> {
         defense: 0,
         items: vec![],
         quest_giver: Some("rats_request".into()),
+        examine_text: None,
+        relationship: 0,
+        memory: vec![],
     });
 
     npcs.insert("skeletal_guard".into(), Npc {
@@ -526,6 +672,9 @@ fn build_npcs() -> HashMap<String, Npc> {
         defense: 4,
         items: vec!["library_key".into()],
         quest_giver: None,
+        examine_text: None,
+        relationship: 0,
+        memory: vec![],
     });
 
     npcs.insert("the_warden".into(), Npc {
@@ -541,6 +690,9 @@ fn build_npcs() -> HashMap<String, Npc> {
         defense: 6,
         items: vec!["rusty_dagger".into()],
         quest_giver: None,
+        examine_text: None,
+        relationship: 0,
+        memory: vec![],
     });
 
     npcs.insert("the_forgotten_one".into(), Npc {
@@ -556,6 +708,9 @@ fn build_npcs() -> HashMap<String, Npc> {
         defense: 8,
         items: vec![],
         quest_giver: Some("the_final_confrontation".into()),
+        examine_text: Some("Its form flickers between shapes — now a crowned king, now a beast of shadow, now something that has no name. The chains binding it glow faintly where they touch its shifting form.".into()),
+        relationship: 0,
+        memory: vec![],
     });
 
     npcs
@@ -573,6 +728,7 @@ fn build_quests() -> HashMap<String, Quest> {
         reward: vec![],
         completed: false,
         active: true,
+        completed_turn: None,
     });
 
     quests.insert("rats_request".into(), Quest {
@@ -584,6 +740,7 @@ fn build_quests() -> HashMap<String, Quest> {
         reward: vec!["health_potion".into()],
         completed: false,
         active: false,
+        completed_turn: None,
     });
 
     quests.insert("merchants_unfinished_business".into(), Quest {
@@ -595,6 +752,7 @@ fn build_quests() -> HashMap<String, Quest> {
         reward: vec![],
         completed: false,
         active: false,
+        completed_turn: None,
     });
 
     quests.insert("the_final_confrontation".into(), Quest {
@@ -606,6 +764,7 @@ fn build_quests() -> HashMap<String, Quest> {
         reward: vec![],
         completed: false,
         active: false,
+        completed_turn: None,
     });
 
     quests
@@ -700,11 +859,11 @@ mod tests {
     #[test]
     fn all_locations_exist() {
         let state = build_thornhold();
-        assert_eq!(state.locations.len(), 13);
+        assert_eq!(state.locations.len(), 14);
         let expected = vec![
             "courtyard", "great_hall", "tower_apex", "library", "barracks",
             "kitchen", "chapel", "armory", "cellar_entrance", "wine_cellar",
-            "crypt_passage", "deep_chamber", "final_sanctum",
+            "crypt_passage", "deep_chamber", "final_sanctum", "hidden_vault",
         ];
         for id in expected {
             assert!(state.locations.contains_key(id), "Missing location: {}", id);
@@ -714,8 +873,15 @@ mod tests {
     #[test]
     fn exits_are_bidirectional() {
         let state = build_thornhold();
+        // hidden_vault is a secret room reachable only via the "plugh" command,
+        // so its exit to great_hall is intentionally one-way at world build time.
+        let secret_exits: std::collections::HashSet<(&str, &str)> =
+            [("hidden_vault", "great_hall")].into_iter().collect();
         for (loc_id, loc) in &state.locations {
             for (dir, dest_id) in &loc.exits {
+                if secret_exits.contains(&(loc_id.as_str(), dest_id.as_str())) {
+                    continue;
+                }
                 let dest = state.locations.get(dest_id).unwrap_or_else(|| {
                     panic!("Exit from {} -> {} leads to non-existent location {}", loc_id, dir, dest_id)
                 });

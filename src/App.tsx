@@ -1,5 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { AchievementsScreen } from "./components/screens/AchievementsScreen";
+import { ReplayScreen } from "./components/screens/ReplayScreen";
+
+const MapEditor = lazy(() => import("./components/editor/MapEditorLazy"));
 import { DeathScreen } from "./components/screens/DeathScreen";
 import { EndingScreen } from "./components/screens/EndingScreen";
 import { SaveLoadScreen } from "./components/screens/SaveLoadScreen";
@@ -20,7 +24,7 @@ import type {
   WorldState,
 } from "./store/types";
 
-type Overlay = null | "settings" | "save" | "load" | "stats" | "modules" | "themeCreator";
+type Overlay = null | "settings" | "save" | "load" | "stats" | "modules" | "themeCreator" | "achievements" | "replays" | "editor";
 
 function getGameOver(mode: WorldState["gameMode"]): EndingType | null {
   if (typeof mode === "object" && "gameOver" in mode) {
@@ -80,6 +84,8 @@ export default function App() {
       if (e.key === "Escape") {
         if (overlay) {
           setOverlay(null);
+        } else if (sidebarOpen) {
+          setSidebarOpen(false);
         } else if (screen === "game") {
           setOverlay("settings");
         }
@@ -91,7 +97,7 @@ export default function App() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [screen, overlay, handleQuickSave]);
+  }, [screen, overlay, sidebarOpen, handleQuickSave]);
 
   const handleNewGame = useCallback(async () => {
     setOverlay(null);
@@ -153,6 +159,9 @@ export default function App() {
             onSettings={() => setOverlay("settings")}
             onStats={() => setOverlay("stats")}
             onModules={() => setOverlay("modules")}
+            onAchievements={() => setOverlay("achievements")}
+            onReplays={() => setOverlay("replays")}
+            onEditor={() => setOverlay("editor")}
           />
         </Transition>
         {overlay === "settings" && (
@@ -184,6 +193,17 @@ export default function App() {
             }}
             onClose={() => setOverlay(null)}
           />
+        )}
+        {overlay === "achievements" && (
+          <AchievementsScreen onClose={() => setOverlay(null)} />
+        )}
+        {overlay === "replays" && (
+          <ReplayScreen onClose={() => setOverlay(null)} />
+        )}
+        {overlay === "editor" && (
+          <Suspense fallback={null}>
+            <MapEditor onClose={() => setOverlay(null)} />
+          </Suspense>
         )}
         {statusBar}
       </>

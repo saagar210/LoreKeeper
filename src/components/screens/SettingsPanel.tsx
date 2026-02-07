@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { trapFocus } from "../../lib/focusTrap";
 import { useSettings } from "../../hooks/useSettings";
-import type { ThemeName } from "../../store/types";
+import type { Difficulty, ThemeName } from "../../store/types";
 
 interface Props {
   onClose: () => void;
@@ -41,6 +41,7 @@ export function SettingsPanel({ onClose, onThemeChange, onOpenThemeCreator }: Pr
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 font-mono"
       role="dialog"
+      aria-modal="true"
       aria-labelledby="settings-heading"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -108,6 +109,63 @@ export function SettingsPanel({ onClose, onThemeChange, onOpenThemeCreator }: Pr
               <span>Instant</span>
               <span>Slow</span>
             </div>
+          </div>
+
+          {/* Sound */}
+          <div>
+            <label className="flex items-center gap-2 text-sm text-[var(--text)] font-bold mb-2">
+              <input
+                type="checkbox"
+                checked={settings.soundEnabled}
+                onChange={(e) =>
+                  updateSettings({ soundEnabled: e.target.checked })
+                }
+              />
+              Sound Effects
+            </label>
+            {settings.soundEnabled && (
+              <div>
+                <label className="text-xs text-[var(--text-dim)] block mb-1">
+                  Volume: {Math.round(settings.soundVolume * 100)}%
+                </label>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={settings.soundVolume}
+                  onChange={(e) =>
+                    updateSettings({ soundVolume: Number(e.target.value) })
+                  }
+                  className="w-full"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Difficulty */}
+          <div>
+            <label className="text-sm text-[var(--text)] font-bold block mb-2">Difficulty</label>
+            <div className="flex gap-2">
+              {(["easy", "normal", "hard"] as Difficulty[]).map((d) => (
+                <button
+                  key={d}
+                  onClick={() => updateSettings({ difficulty: d })}
+                  className={`border px-3 py-1 text-xs capitalize transition-colors ${
+                    settings.difficulty === d
+                      ? "border-[var(--accent)] text-[var(--accent)]"
+                      : "border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--text)]"
+                  }`}
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-[var(--text-dim)] mt-1">
+              {settings.difficulty === "easy" && "More damage dealt, less taken, more hints."}
+              {settings.difficulty === "normal" && "Balanced experience."}
+              {settings.difficulty === "hard" && "Less damage dealt, more taken, fewer hints."}
+            </p>
           </div>
 
           {/* Ollama */}

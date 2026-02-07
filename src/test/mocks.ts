@@ -34,6 +34,8 @@ export function createPlayer(overrides?: Partial<Player>): Player {
     questFlags: {},
     visitedLocations: ["entrance_hall"],
     turnsElapsed: 0,
+    statusEffects: [],
+    discoveredSecrets: [],
     ...overrides,
   };
 }
@@ -50,6 +52,8 @@ export function createLocation(overrides?: Partial<Location>): Location {
     visited: true,
     discoveredSecrets: [],
     ambientMood: "mysterious",
+    examineDetails: null,
+    revisitDescription: null,
     ...overrides,
   };
 }
@@ -64,6 +68,7 @@ export function createItem(overrides?: Partial<Item>): Item {
     usable: true,
     consumable: false,
     keyId: null,
+    lore: null,
     ...overrides,
   };
 }
@@ -82,6 +87,9 @@ export function createNpc(overrides?: Partial<Npc>): Npc {
     defense: 3,
     items: [],
     questGiver: null,
+    examineText: null,
+    relationship: 0,
+    memory: [],
     ...overrides,
   };
 }
@@ -96,6 +104,7 @@ export function createQuest(overrides?: Partial<Quest>): Quest {
     reward: ["gold_coin"],
     completed: false,
     active: true,
+    completedTurn: null,
     ...overrides,
   };
 }
@@ -116,6 +125,11 @@ export function createWorldState(overrides?: Partial<WorldState>): WorldState {
     combatLog: [],
     lastNarrativeContext: null,
     initialized: true,
+    difficulty: "normal",
+    journal: [],
+    recipes: [],
+    dialogueHistory: [],
+    commandLog: [],
     ...overrides,
     // Ensure nested overrides merge correctly
     ...(overrides?.player ? { player: { ...player, ...overrides.player } } : {}),
@@ -128,6 +142,7 @@ export function createCommandResponse(
   return {
     messages: [{ text: "Welcome to Thornhold.", lineType: "narration" }],
     worldState: createWorldState(),
+    soundCues: [],
     ...overrides,
   };
 }
@@ -154,6 +169,9 @@ export function createSettings(overrides?: Partial<GameSettings>): GameSettings 
     typewriterSpeed: 30,
     theme: "greenTerminal",
     narrationVerbosity: "normal",
+    soundEnabled: false,
+    soundVolume: 0.5,
+    difficulty: "normal",
     ...overrides,
   };
 }

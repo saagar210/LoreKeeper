@@ -1,9 +1,12 @@
+pub mod achievements;
 pub mod autocomplete;
 pub mod combat;
+pub mod editor;
 pub mod game;
 pub mod map;
 pub mod modules;
 pub mod narration;
+pub mod replay;
 pub mod save;
 pub mod settings;
 pub mod stats;

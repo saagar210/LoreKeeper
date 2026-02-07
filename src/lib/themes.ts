@@ -83,7 +83,10 @@ export function applyTheme(theme: ThemeName): void {
 export function applyCustomTheme(config: ThemeConfig): void {
   const root = document.documentElement;
   for (const [key, value] of Object.entries(config)) {
-    root.style.setProperty(key, value);
+    // Only allow CSS custom properties to prevent overriding real CSS properties
+    if (key.startsWith("--")) {
+      root.style.setProperty(key, value);
+    }
   }
   root.setAttribute("data-theme", "custom");
 }

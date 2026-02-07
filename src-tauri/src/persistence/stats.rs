@@ -2,11 +2,15 @@ use rusqlite::{params, Connection};
 use std::collections::HashMap;
 
 pub fn increment_stat(conn: &Connection, key: &str, amount: i32) -> Result<(), String> {
-    conn.execute(
-        "UPDATE game_stats SET value_int = value_int + ?2 WHERE key = ?1",
-        params![key, amount],
-    )
-    .map_err(|e| format!("Stats error: {}", e))?;
+    let rows = conn
+        .execute(
+            "UPDATE game_stats SET value_int = value_int + ?2 WHERE key = ?1",
+            params![key, amount],
+        )
+        .map_err(|e| format!("Stats error: {}", e))?;
+    if rows == 0 {
+        return Err(format!("Unknown stat key: {}", key));
+    }
     Ok(())
 }
 

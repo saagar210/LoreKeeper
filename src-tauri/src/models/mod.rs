@@ -1,5 +1,8 @@
+pub mod achievement;
+pub mod crafting;
 pub mod event;
 pub mod item;
+pub mod journal;
 pub mod location;
 pub mod module;
 pub mod npc;
@@ -8,8 +11,11 @@ pub mod quest;
 pub mod settings;
 pub mod world;
 
+pub use achievement::*;
+pub use crafting::*;
 pub use event::*;
 pub use item::*;
+pub use journal::*;
 pub use location::*;
 pub use npc::*;
 pub use player::*;

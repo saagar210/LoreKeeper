@@ -125,6 +125,10 @@ impl OllamaClient {
             .await
             .map_err(|e| format!("Failed to connect to Ollama: {}", e))?;
 
+        if !resp.status().is_success() {
+            return Err(format!("Ollama returned status: {}", resp.status()));
+        }
+
         let tags: TagsResponse = resp
             .json()
             .await

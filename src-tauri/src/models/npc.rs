@@ -2,6 +2,13 @@ use serde::{Deserialize, Serialize};
 
 pub type NpcId = String;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NpcMemory {
+    pub turn: u32,
+    pub event: String,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum DialogueState {
@@ -29,6 +36,12 @@ pub struct Npc {
     pub defense: i32,
     pub items: Vec<String>,
     pub quest_giver: Option<String>,
+    #[serde(default)]
+    pub examine_text: Option<String>,
+    #[serde(default)]
+    pub relationship: i32,
+    #[serde(default)]
+    pub memory: Vec<NpcMemory>,
 }
 
 #[cfg(test)]
@@ -50,6 +63,9 @@ mod tests {
             defense: 0,
             items: vec![],
             quest_giver: Some("merchants_unfinished_business".into()),
+            examine_text: None,
+            relationship: 0,
+            memory: vec![],
         };
         let json = serde_json::to_string(&npc).unwrap();
         assert!(json.contains("personalitySeed"));

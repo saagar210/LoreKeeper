@@ -15,6 +15,9 @@ pub enum GameCommand {
     Inventory,
     Map,
     QuestLog,
+    Journal,
+    Craft(String, Option<String>),
+    Secret(String),
     Help,
     Save(Option<String>),
     Load(Option<String>),
@@ -97,7 +100,7 @@ fn parse_command(cleaned: &str) -> GameCommand {
         }
 
         // Look
-        "look" | "l" | "examine" | "inspect" => {
+        "look" | "l" | "examine" | "inspect" | "x" => {
             let target = strip_articles(rest);
             if target.is_empty() {
                 GameCommand::Look(None)
@@ -187,6 +190,7 @@ fn parse_command(cleaned: &str) -> GameCommand {
         "inventory" | "inv" | "i" => GameCommand::Inventory,
         "map" | "m" => GameCommand::Map,
         "quests" | "journal" | "quest" => GameCommand::QuestLog,
+        "codex" | "notes" | "lore" => GameCommand::Journal,
         "help" | "?" => GameCommand::Help,
 
         // Save/Load
@@ -203,6 +207,28 @@ fn parse_command(cleaned: &str) -> GameCommand {
             } else {
                 GameCommand::Load(Some(rest.to_string()))
             }
+        }
+
+        // Crafting
+        "craft" | "combine" | "mix" => {
+            let target = strip_articles(rest);
+            if target.is_empty() {
+                GameCommand::Unknown("Craft what?".to_string())
+            } else if let Some(with_idx) = target.find(" with ") {
+                let first = target[..with_idx].trim().to_string();
+                let second = target[with_idx + 6..].trim().to_string();
+                GameCommand::Craft(first, Some(second))
+            } else if let Some(and_idx) = target.find(" and ") {
+                let first = target[..and_idx].trim().to_string();
+                let second = target[and_idx + 5..].trim().to_string();
+                GameCommand::Craft(first, Some(second))
+            } else {
+                GameCommand::Craft(target, None)
+            }
+        }
+
+        "xyzzy" | "plugh" | "abracadabra" | "sesame" | "opensesame" => {
+            GameCommand::Secret(verb.to_string())
         }
 
         _ => GameCommand::Unknown(cleaned.to_string()),
@@ -254,6 +280,10 @@ mod tests {
         assert_eq!(
             parse("examine rusty lantern", &exploring()),
             GameCommand::Look(Some("rusty lantern".to_string()))
+        );
+        assert_eq!(
+            parse("x sword", &exploring()),
+            GameCommand::Look(Some("sword".to_string()))
         );
     }
 
@@ -390,5 +420,40 @@ mod tests {
             parse("Go North", &exploring()),
             GameCommand::Go(Direction::North)
         );
+    }
+
+    #[test]
+    fn parse_craft() {
+        assert_eq!(
+            parse("craft sword with gem", &exploring()),
+            GameCommand::Craft("sword".into(), Some("gem".into()))
+        );
+        assert_eq!(
+            parse("combine bone and silver", &exploring()),
+            GameCommand::Craft("bone".into(), Some("silver".into()))
+        );
+        assert_eq!(
+            parse("craft", &exploring()),
+            GameCommand::Unknown("Craft what?".to_string())
+        );
+        assert_eq!(
+            parse("craft recipes", &exploring()),
+            GameCommand::Craft("recipes".into(), None)
+        );
+    }
+
+    #[test]
+    fn parse_secret_commands() {
+        assert_eq!(parse("xyzzy", &exploring()), GameCommand::Secret("xyzzy".into()));
+        assert_eq!(parse("plugh", &exploring()), GameCommand::Secret("plugh".into()));
+        assert_eq!(parse("abracadabra", &exploring()), GameCommand::Secret("abracadabra".into()));
+        assert_eq!(parse("sesame", &exploring()), GameCommand::Secret("sesame".into()));
+    }
+
+    #[test]
+    fn parse_codex() {
+        assert_eq!(parse("codex", &exploring()), GameCommand::Journal);
+        assert_eq!(parse("notes", &exploring()), GameCommand::Journal);
+        assert_eq!(parse("lore", &exploring()), GameCommand::Journal);
     }
 }

@@ -67,6 +67,16 @@ export function StatsPanel({ player, items }: Props) {
           <span>{player.turnsElapsed}</span>
         </div>
       </div>
+      {player.statusEffects.length > 0 && (
+        <div className="mt-3 border-t border-[var(--border)] pt-2">
+          <div className="text-xs text-[var(--text-dim)] mb-1">Status Effects:</div>
+          {player.statusEffects.map((effect, i) => (
+            <div key={i} className="text-xs text-[var(--text)]">
+              {effect.name} ({effect.turnsRemaining} turns)
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

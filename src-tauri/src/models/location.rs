@@ -80,6 +80,10 @@ pub struct Location {
     pub visited: bool,
     pub discovered_secrets: Vec<String>,
     pub ambient_mood: Mood,
+    #[serde(default)]
+    pub examine_details: Option<String>,
+    #[serde(default)]
+    pub revisit_description: Option<String>,
 }
 
 #[cfg(test)]
@@ -115,6 +119,8 @@ mod tests {
             visited: false,
             discovered_secrets: vec![],
             ambient_mood: Mood::Peaceful,
+                examine_details: None,
+                revisit_description: None,
         };
         let json = serde_json::to_string(&loc).unwrap();
         assert!(json.contains("ambientMood"));

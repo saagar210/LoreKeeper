@@ -30,8 +30,9 @@ pub struct MapData {
     pub edges: Vec<MapEdge>,
 }
 
-/// Hand-tuned x/y positions for the 13 Thornhold locations.
-/// Coordinate space: 0-280 x, 0-400 y (fits sidebar width).
+/// Hand-tuned x/y positions for Thornhold locations.
+/// Coordinate space: 0-280 x, 0-400+ y (fits sidebar width).
+/// Dungeon rooms are positioned dynamically below the armory.
 fn get_position(id: &str) -> (f32, f32) {
     match id {
         "courtyard"       => (40.0, 40.0),
@@ -47,7 +48,21 @@ fn get_position(id: &str) -> (f32, f32) {
         "crypt_passage"   => (200.0, 260.0),
         "deep_chamber"    => (200.0, 320.0),
         "final_sanctum"   => (200.0, 380.0),
-        _                 => (140.0, 200.0),
+        "hidden_vault"    => (80.0, 40.0),
+        _ => {
+            // Handle dungeon rooms: dungeon_d{depth}_r{n}
+            if let Some(rest) = id.strip_prefix("dungeon_d") {
+                if let Some(d_str) = rest.split('_').next() {
+                    if let Ok(depth) = d_str.parse::<u32>() {
+                        // Zigzag below armory (40, 200)
+                        let x = if depth % 2 == 0 { 40.0 } else { 100.0 };
+                        let y = 260.0 + (depth as f32 * 50.0);
+                        return (x, y);
+                    }
+                }
+            }
+            (140.0, 200.0)
+        }
     }
 }
 
@@ -81,15 +96,26 @@ fn build_map_data(state: &WorldState) -> MapData {
             };
 
             if seen_edges.insert(edge_key) {
-                let locked = loc
+                // Check locked_exits from both endpoints
+                let locked_from_here = loc
                     .locked_exits
                     .iter()
                     .any(|(dir, _)| loc.exits.get(dir) == Some(dest_id));
+                let locked_from_other = state
+                    .locations
+                    .get(dest_id)
+                    .map(|other| {
+                        other
+                            .locked_exits
+                            .iter()
+                            .any(|(dir, _)| other.exits.get(dir) == Some(id))
+                    })
+                    .unwrap_or(false);
 
                 edges.push(MapEdge {
                     from: id.clone(),
                     to: dest_id.clone(),
-                    locked,
+                    locked: locked_from_here || locked_from_other,
                 });
             }
         }
@@ -108,7 +134,7 @@ mod tests {
     fn map_data_has_all_locations() {
         let state = world_builder::build_thornhold();
         let data = build_map_data(&state);
-        assert_eq!(data.nodes.len(), 13);
+        assert_eq!(data.nodes.len(), 14);
     }
 
     #[test]

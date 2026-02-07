@@ -11,11 +11,15 @@ pub fn describe_location(
 
     if first_visit {
         lines.push(format!("--- {} ---", location.name));
+        lines.push(location.description.clone());
     } else {
         lines.push(format!("--- {} (revisited) ---", location.name));
+        if let Some(revisit) = &location.revisit_description {
+            lines.push(revisit.clone());
+        } else {
+            lines.push(location.description.clone());
+        }
     }
-
-    lines.push(location.description.clone());
 
     // Items on the ground
     let item_names: Vec<String> = location
@@ -123,14 +127,22 @@ pub fn describe_player_death() -> String {
 
 pub fn describe_npc_dialogue(npc: &Npc) -> String {
     match npc.dialogue_state {
-        DialogueState::Greeting => {
-            format!(
-                "{} regards you with interest. \"Greetings, traveler.\"",
-                npc.name
-            )
-        }
-        DialogueState::Familiar => {
-            format!("{} nods in recognition. \"We meet again.\"", npc.name)
+        DialogueState::Greeting | DialogueState::Familiar => {
+            if npc.relationship > 30 {
+                format!(
+                    "{} greets you warmly. \"Welcome back, friend!\"",
+                    npc.name
+                )
+            } else if npc.relationship < -30 {
+                format!("{} regards you with suspicion.", npc.name)
+            } else if npc.dialogue_state == DialogueState::Greeting {
+                format!(
+                    "{} regards you with interest. \"Greetings, traveler.\"",
+                    npc.name
+                )
+            } else {
+                format!("{} nods in recognition. \"We meet again.\"", npc.name)
+            }
         }
         DialogueState::QuestOffered => {
             format!(
@@ -280,6 +292,58 @@ pub fn describe_door_unlocked(direction: &Direction, key_name: &str) -> String {
     )
 }
 
+pub fn describe_examine_item(item: &Item) -> Vec<String> {
+    let mut lines = Vec::new();
+    lines.push(format!("--- {} ---", item.name));
+    lines.push(item.description.clone());
+    if let Some(modifier) = &item.modifier {
+        let mut stats = Vec::new();
+        if modifier.attack != 0 {
+            stats.push(format!("Attack {:+}", modifier.attack));
+        }
+        if modifier.defense != 0 {
+            stats.push(format!("Defense {:+}", modifier.defense));
+        }
+        if modifier.health != 0 {
+            stats.push(format!("Health {:+}", modifier.health));
+        }
+        if !stats.is_empty() {
+            lines.push(format!("Stats: {}", stats.join(", ")));
+        }
+    }
+    if let Some(lore) = &item.lore {
+        lines.push(format!("Lore: {}", lore));
+    }
+    lines
+}
+
+pub fn describe_examine_npc(npc: &Npc) -> Vec<String> {
+    let mut lines = Vec::new();
+    lines.push(format!("--- {} ---", npc.name));
+    if let Some(examine_text) = &npc.examine_text {
+        lines.push(examine_text.clone());
+    } else {
+        lines.push(npc.description.clone());
+    }
+    if npc.dialogue_state != DialogueState::Dead {
+        lines.push(format!("Health: {}/{}", npc.health, npc.max_health));
+    } else {
+        lines.push("Dead.".to_string());
+    }
+    lines
+}
+
+pub fn describe_examine_room(location: &Location) -> Vec<String> {
+    let mut lines = Vec::new();
+    lines.push(format!("--- {} (detailed) ---", location.name));
+    if let Some(details) = &location.examine_details {
+        lines.push(details.clone());
+    } else {
+        lines.push(location.description.clone());
+    }
+    lines
+}
+
 pub fn describe_ambiguous_target(matches: &[String]) -> String {
     format!("Which one? {}", matches.join(", "))
 }
@@ -331,6 +395,8 @@ mod tests {
             visited: false,
             discovered_secrets: vec![],
             ambient_mood: Mood::Peaceful,
+                examine_details: None,
+                revisit_description: None,
         };
         let mut items = HashMap::new();
         items.insert(
@@ -344,6 +410,7 @@ mod tests {
                 usable: false,
                 consumable: false,
                 key_id: None,
+                lore: None,
             },
         );
         let mut npcs = HashMap::new();
@@ -362,6 +429,9 @@ mod tests {
                 defense: 3,
                 items: vec![],
                 quest_giver: None,
+                examine_text: None,
+                relationship: 0,
+                memory: vec![],
             },
         );
 

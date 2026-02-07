@@ -7,6 +7,8 @@ pub struct DialogueResult {
 }
 
 pub fn enter_dialogue(npc_id: &str, state: &mut WorldState) -> DialogueResult {
+    state.dialogue_history.clear();
+
     let npc = match state.npcs.get(npc_id) {
         Some(n) => n.clone(),
         None => {
@@ -50,6 +52,21 @@ pub fn enter_dialogue(npc_id: &str, state: &mut WorldState) -> DialogueResult {
             exit_dialogue: true,
         };
     }
+
+    // Record memory
+    if let Some(npc_mut) = state.npcs.get_mut(npc_id) {
+        npc_mut.memory.push(NpcMemory {
+            turn: state.player.turns_elapsed,
+            event: "talked".to_string(),
+        });
+        // Cap memory at 20 entries
+        while npc_mut.memory.len() > 20 {
+            npc_mut.memory.remove(0);
+        }
+    }
+
+    // Re-read npc after mutation for greeting text
+    let npc = state.npcs.get(npc_id).cloned().unwrap();
 
     state.game_mode = GameMode::InDialogue(npc_id.to_string());
 
@@ -116,6 +133,7 @@ pub fn process_dialogue_input(
 
     // Check for exit commands
     if matches!(input_lower.as_str(), "leave" | "goodbye" | "bye" | "exit" | "quit") {
+        state.dialogue_history.clear();
         state.game_mode = GameMode::Exploring;
         let npc_name = state
             .npcs
@@ -154,6 +172,8 @@ pub fn process_dialogue_input(
                     }
                     if let Some(npc_mut) = state.npcs.get_mut(npc_id) {
                         npc_mut.dialogue_state = DialogueState::QuestActive;
+                        npc_mut.relationship += 5;
+                        npc_mut.memory.push(NpcMemory { turn: state.player.turns_elapsed, event: "quest_accepted".into() });
                     }
                     let quest_name = state
                         .quests
@@ -179,6 +199,8 @@ pub fn process_dialogue_input(
             } else if matches!(input_lower.as_str(), "no" | "n" | "decline" | "nah") {
                 if let Some(npc_mut) = state.npcs.get_mut(npc_id) {
                     npc_mut.dialogue_state = DialogueState::Familiar;
+                    npc_mut.relationship -= 5;
+                    npc_mut.memory.push(NpcMemory { turn: state.player.turns_elapsed, event: "quest_declined".into() });
                 }
                 return DialogueResult {
                     messages: vec![OutputLine {
@@ -215,6 +237,8 @@ pub fn process_dialogue_input(
                     let quest_name = quest.name.clone();
                     if let Some(npc_mut) = state.npcs.get_mut(npc_id) {
                         npc_mut.dialogue_state = DialogueState::Familiar;
+                        npc_mut.relationship += 10;
+                        npc_mut.memory.push(NpcMemory { turn: state.player.turns_elapsed, event: "quest_completed".into() });
                     }
                     let reward_names: Vec<String> = rewards
                         .iter()
@@ -295,6 +319,8 @@ mod tests {
                 visited: true,
                 discovered_secrets: vec![],
                 ambient_mood: Mood::Peaceful,
+                examine_details: None,
+                revisit_description: None,
             },
         );
         state.npcs.insert(
@@ -312,6 +338,9 @@ mod tests {
                 defense: 0,
                 items: vec![],
                 quest_giver: Some("test_quest".into()),
+                examine_text: None,
+                relationship: 0,
+                memory: vec![],
             },
         );
         state.quests.insert(
@@ -325,6 +354,7 @@ mod tests {
                 reward: vec![],
                 completed: false,
                 active: false,
+                completed_turn: None,
             },
         );
         state
@@ -362,5 +392,60 @@ mod tests {
         state.npcs.get_mut("merchant").unwrap().hostile = true;
         let result = enter_dialogue("merchant", &mut state);
         assert!(result.exit_dialogue);
+    }
+
+    #[test]
+    fn test_memory_recorded_on_talk() {
+        let mut state = make_dialogue_state();
+        enter_dialogue("merchant", &mut state);
+        let npc = state.npcs.get("merchant").unwrap();
+        assert_eq!(npc.memory.len(), 1);
+        assert_eq!(npc.memory[0].event, "talked");
+    }
+
+    #[test]
+    fn test_relationship_increases_on_quest_accept() {
+        let mut state = make_dialogue_state();
+        enter_dialogue("merchant", &mut state);
+        process_dialogue_input("yes", "merchant", &mut state);
+        let npc = state.npcs.get("merchant").unwrap();
+        assert_eq!(npc.relationship, 5);
+        assert!(npc.memory.iter().any(|m| m.event == "quest_accepted"));
+    }
+
+    #[test]
+    fn test_relationship_decreases_on_quest_decline() {
+        let mut state = make_dialogue_state();
+        enter_dialogue("merchant", &mut state);
+        process_dialogue_input("no", "merchant", &mut state);
+        let npc = state.npcs.get("merchant").unwrap();
+        assert_eq!(npc.relationship, -5);
+        assert!(npc.memory.iter().any(|m| m.event == "quest_declined"));
+    }
+
+    #[test]
+    fn dialogue_history_cleared_on_enter() {
+        let mut state = make_dialogue_state();
+        state.dialogue_history.push(DialogueHistoryEntry {
+            role: "user".to_string(),
+            text: "old message".to_string(),
+        });
+        assert_eq!(state.dialogue_history.len(), 1);
+        enter_dialogue("merchant", &mut state);
+        assert!(state.dialogue_history.is_empty());
+    }
+
+    #[test]
+    fn dialogue_history_cleared_on_exit() {
+        let mut state = make_dialogue_state();
+        enter_dialogue("merchant", &mut state);
+        state.dialogue_history.push(DialogueHistoryEntry {
+            role: "user".to_string(),
+            text: "hello".to_string(),
+        });
+        assert_eq!(state.dialogue_history.len(), 1);
+        process_dialogue_input("leave", "merchant", &mut state);
+        assert!(state.dialogue_history.is_empty());
+        assert_eq!(state.game_mode, GameMode::Exploring);
     }
 }

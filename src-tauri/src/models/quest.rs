@@ -21,6 +21,8 @@ pub struct Quest {
     pub reward: Vec<String>,
     pub completed: bool,
     pub active: bool,
+    #[serde(default)]
+    pub completed_turn: Option<u32>,
 }
 
 #[cfg(test)]
@@ -38,6 +40,7 @@ mod tests {
             reward: vec!["health_potion".into()],
             completed: false,
             active: false,
+            completed_turn: None,
         };
         let json = serde_json::to_string(&quest).unwrap();
         assert!(json.contains("fetchItem"));

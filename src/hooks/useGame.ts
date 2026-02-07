@@ -1,9 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { playSoundCues, setVolume } from "../lib/audio";
 import { MAX_HISTORY_LINES } from "../lib/constants";
 import type {
   CommandResponse,
+  GameSettings,
   NarrativeEvent,
   OutputLine,
   WorldState,
@@ -24,6 +26,21 @@ export function useGame() {
   const unlistenRef = useRef<(() => void) | null>(null);
   // Tracks whether we've started a new LLM narration line in the current stream
   const streamLineStartedRef = useRef(false);
+  const soundSettingsRef = useRef({ enabled: false, volume: 0.5 });
+
+  const updateSoundSettings = useCallback((settings: GameSettings) => {
+    soundSettingsRef.current = {
+      enabled: settings.soundEnabled,
+      volume: settings.soundVolume,
+    };
+    setVolume(settings.soundVolume);
+  }, []);
+
+  function handleSoundCues(response: CommandResponse) {
+    if (soundSettingsRef.current.enabled && response.soundCues?.length > 0) {
+      playSoundCues(response.soundCues);
+    }
+  }
 
   // Listen for narrative streaming events
   useEffect(() => {
@@ -61,6 +78,7 @@ export function useGame() {
       } else if (payload.type === "complete" || payload.type === "fallback") {
         streamLineStartedRef.current = false;
         setIsNarrating(false);
+        setHistory((prev) => trimHistory(prev));
       }
     }).then((unlisten) => {
       if (!cancelled) {
@@ -107,6 +125,7 @@ export function useGame() {
           input,
         });
         setWorldState(response.worldState);
+        handleSoundCues(response);
         if (response.messages.length > 0) {
           setHistory((prev) => trimHistory([...prev, ...response.messages]));
         }
@@ -125,8 +144,10 @@ export function useGame() {
       const response = await invoke<CommandResponse>("new_game");
       setHistory(response.messages);
       setWorldState(response.worldState);
+      handleSoundCues(response);
     } catch (err) {
       console.error("Failed to start new game:", err);
+      setHistory([{ text: `Error: ${err}`, lineType: "error" }]);
     }
   }, []);
 
@@ -138,5 +159,6 @@ export function useGame() {
     initializeGame,
     sendCommand,
     newGame,
+    updateSoundSettings,
   };
 }

@@ -1,6 +1,7 @@
 use rand::Rng;
 
 use crate::models::*;
+use crate::models::settings::Difficulty;
 
 pub struct CombatResult {
     pub messages: Vec<OutputLine>,
@@ -10,12 +11,37 @@ pub struct CombatResult {
     pub fled: bool,
 }
 
-fn calculate_damage(attacker_attack: i32, defender_defense: i32) -> (i32, bool) {
+fn difficulty_player_multiplier(difficulty: &Difficulty) -> f64 {
+    match difficulty {
+        Difficulty::Easy => 1.5,
+        Difficulty::Normal => 1.0,
+        Difficulty::Hard => 0.75,
+    }
+}
+
+fn difficulty_enemy_multiplier(difficulty: &Difficulty) -> f64 {
+    match difficulty {
+        Difficulty::Easy => 0.5,
+        Difficulty::Normal => 1.0,
+        Difficulty::Hard => 1.5,
+    }
+}
+
+pub fn flee_success_rate(difficulty: &Difficulty) -> f64 {
+    match difficulty {
+        Difficulty::Easy => 0.75,
+        Difficulty::Normal => 0.5,
+        Difficulty::Hard => 0.33,
+    }
+}
+
+fn calculate_damage(attacker_attack: i32, defender_defense: i32, multiplier: f64) -> (i32, bool) {
     let mut rng = rand::thread_rng();
     let variance = rng.gen_range(-2..=2);
     let critical = rng.gen_range(0..10) == 0; // 10% crit chance
     let base_damage = (attacker_attack - defender_defense + variance).max(1);
-    let damage = if critical { base_damage * 2 } else { base_damage };
+    let scaled = ((base_damage as f64) * multiplier).round() as i32;
+    let damage = if critical { scaled * 2 } else { scaled }.max(1);
     (damage, critical)
 }
 
@@ -27,7 +53,8 @@ fn get_player_attack(player: &Player, items: &std::collections::HashMap<String, 
         .and_then(|i| i.modifier.as_ref())
         .map(|m| m.attack)
         .unwrap_or(0);
-    player.attack + weapon_bonus
+    let status_bonus: i32 = player.status_effects.iter().map(|e| e.attack_modifier).sum();
+    (player.attack + weapon_bonus + status_bonus).max(0)
 }
 
 fn get_player_defense(player: &Player, items: &std::collections::HashMap<String, Item>) -> i32 {
@@ -38,7 +65,8 @@ fn get_player_defense(player: &Player, items: &std::collections::HashMap<String,
         .and_then(|i| i.modifier.as_ref())
         .map(|m| m.defense)
         .unwrap_or(0);
-    player.defense + armor_bonus
+    let status_bonus: i32 = player.status_effects.iter().map(|e| e.defense_modifier).sum();
+    (player.defense + armor_bonus + status_bonus).max(0)
 }
 
 pub fn execute_player_attack(state: &mut WorldState) -> CombatResult {
@@ -79,7 +107,7 @@ pub fn execute_player_attack(state: &mut WorldState) -> CombatResult {
             };
         }
     };
-    let (damage, critical) = calculate_damage(player_atk, enemy.defense);
+    let (damage, critical) = calculate_damage(player_atk, enemy.defense, difficulty_player_multiplier(&state.difficulty));
 
     // Apply damage to enemy
     let new_hp = (enemy.health - damage).max(0);
@@ -171,7 +199,7 @@ pub fn execute_player_attack(state: &mut WorldState) -> CombatResult {
 
     // Enemy's turn
     let player_def = get_player_defense(&state.player, &state.items);
-    let (enemy_damage, enemy_crit) = calculate_damage(enemy.attack, player_def);
+    let (enemy_damage, enemy_crit) = calculate_damage(enemy.attack, player_def, difficulty_enemy_multiplier(&state.difficulty));
     state.player.health = (state.player.health - enemy_damage).max(0);
 
     // Log enemy attack
@@ -228,9 +256,27 @@ pub fn execute_player_attack(state: &mut WorldState) -> CombatResult {
 }
 
 pub fn execute_flee(state: &mut WorldState) -> CombatResult {
+    let enemy_id = match &state.game_mode {
+        GameMode::InCombat(id) => id.clone(),
+        _ => {
+            return CombatResult {
+                messages: vec![OutputLine {
+                    text: "You're not in combat!".into(),
+                    line_type: LineType::Error,
+                }],
+                action_type: ActionType::Error {
+                    message: "Not in combat".into(),
+                },
+                enemy_defeated: false,
+                player_died: false,
+                fled: false,
+            }
+        }
+    };
+
     let mut messages = Vec::new();
     let mut rng = rand::thread_rng();
-    let success = rng.gen_bool(0.5);
+    let success = rng.gen_bool(flee_success_rate(&state.difficulty));
 
     if !success {
         messages.push(OutputLine {
@@ -239,20 +285,10 @@ pub fn execute_flee(state: &mut WorldState) -> CombatResult {
         });
 
         // Enemy gets a free attack
-        let enemy_id = match &state.game_mode {
-            GameMode::InCombat(id) => id.clone(),
-            _ => return CombatResult {
-                messages,
-                action_type: ActionType::CombatFlee { success: false },
-                enemy_defeated: false,
-                player_died: false,
-                fled: false,
-            },
-        };
 
         if let Some(enemy) = state.npcs.get(&enemy_id) {
             let player_def = get_player_defense(&state.player, &state.items);
-            let (damage, critical) = calculate_damage(enemy.attack, player_def);
+            let (damage, critical) = calculate_damage(enemy.attack, player_def, difficulty_enemy_multiplier(&state.difficulty));
             state.player.health = (state.player.health - damage).max(0);
             messages.push(OutputLine {
                 text: crate::engine::templates::describe_combat_attack(
@@ -350,6 +386,8 @@ mod tests {
                 visited: true,
                 discovered_secrets: vec![],
                 ambient_mood: Mood::Dangerous,
+                examine_details: None,
+                revisit_description: None,
             },
         );
         state.locations.insert(
@@ -365,6 +403,8 @@ mod tests {
                 visited: false,
                 discovered_secrets: vec![],
                 ambient_mood: Mood::Peaceful,
+                examine_details: None,
+                revisit_description: None,
             },
         );
         state.npcs.insert(
@@ -382,6 +422,9 @@ mod tests {
                 defense: 1,
                 items: vec!["gold_coin".into()],
                 quest_giver: None,
+                examine_text: None,
+                relationship: 0,
+                memory: vec![],
             },
         );
         state.items.insert(
@@ -395,6 +438,7 @@ mod tests {
                 usable: false,
                 consumable: false,
                 key_id: None,
+                lore: None,
             },
         );
         state.player.location = "arena".into();

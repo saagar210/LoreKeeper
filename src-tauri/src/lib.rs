@@ -60,6 +60,11 @@ pub fn run() {
             commands::themes::save_custom_theme,
             commands::themes::list_custom_themes,
             commands::themes::delete_custom_theme,
+            commands::achievements::get_achievements,
+            commands::replay::list_replays,
+            commands::replay::get_replay,
+            commands::editor::validate_module_json,
+            commands::editor::export_module,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

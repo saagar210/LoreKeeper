@@ -1,6 +1,26 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum StatusEffectType {
+    Poison,
+    Blessed,
+    Weakened,
+    Burning,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StatusEffect {
+    pub effect_type: StatusEffectType,
+    pub name: String,
+    pub turns_remaining: i32,
+    pub damage_per_turn: i32,
+    pub attack_modifier: i32,
+    pub defense_modifier: i32,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Player {
@@ -16,6 +36,10 @@ pub struct Player {
     pub quest_flags: HashMap<String, bool>,
     pub visited_locations: HashSet<String>,
     pub turns_elapsed: u32,
+    #[serde(default)]
+    pub status_effects: Vec<StatusEffect>,
+    #[serde(default)]
+    pub discovered_secrets: Vec<String>,
 }
 
 impl Default for Player {
@@ -35,6 +59,8 @@ impl Default for Player {
             quest_flags: HashMap::new(),
             visited_locations: visited,
             turns_elapsed: 0,
+            status_effects: Vec::new(),
+            discovered_secrets: Vec::new(),
         }
     }
 }

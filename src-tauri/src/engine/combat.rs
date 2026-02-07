@@ -103,7 +103,7 @@ pub fn execute_player_attack(state: &mut WorldState) -> CombatResult {
         defender_hp_after: new_hp,
         is_player_attack: true,
     });
-    if state.combat_log.len() > 100 {
+    while state.combat_log.len() > 100 {
         state.combat_log.remove(0);
     }
 
@@ -183,7 +183,7 @@ pub fn execute_player_attack(state: &mut WorldState) -> CombatResult {
         defender_hp_after: state.player.health,
         is_player_attack: false,
     });
-    if state.combat_log.len() > 100 {
+    while state.combat_log.len() > 100 {
         state.combat_log.remove(0);
     }
 

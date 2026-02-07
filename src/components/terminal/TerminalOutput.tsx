@@ -92,7 +92,7 @@ export function TerminalOutput({ lines, isNarrating, ollamaEnabled, ollamaModel 
             <>
               <button
                 onClick={() => {
-                  const hash = String(keyedLines.length);
+                  const hash = `narration-${nextIdRef.current}`;
                   rate(hash, 1, ollamaModel ?? "");
                   setRated(true);
                 }}
@@ -103,7 +103,7 @@ export function TerminalOutput({ lines, isNarrating, ollamaEnabled, ollamaModel 
               </button>
               <button
                 onClick={() => {
-                  const hash = String(keyedLines.length);
+                  const hash = `narration-${nextIdRef.current}`;
                   rate(hash, -1, ollamaModel ?? "");
                   setRated(true);
                 }}

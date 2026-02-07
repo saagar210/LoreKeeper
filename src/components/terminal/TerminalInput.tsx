@@ -123,7 +123,7 @@ export function TerminalInput({ onSubmit, disabled }: Props) {
         >
           {completions.map((completion, i) => (
             <li
-              key={completion}
+              key={`${completion}-${i}`}
               id={`autocomplete-${i}`}
               role="option"
               aria-selected={i === selectedIndex}

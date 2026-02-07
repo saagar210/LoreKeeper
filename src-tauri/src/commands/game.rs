@@ -174,7 +174,6 @@ pub async fn process_command(
             _ => {}
         }
 
-        let prev_location = state.player.location.clone();
         let prev_visited_count = state.player.visited_locations.len();
 
         let result = executor::execute(command, &mut state);
@@ -215,8 +214,6 @@ pub async fn process_command(
                 }
             }
         }
-
-        let _ = prev_location; // used above for tracking
 
         narrative_ctx = result.narrative_context;
         // Store last narrative context for retry

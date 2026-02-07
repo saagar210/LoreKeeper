@@ -44,7 +44,7 @@ describe("useCommandHistory", () => {
 
     // Go back down
     expect(result.current.getNext()).toBe("look");
-    // Past the end returns empty string
+    // Past the end returns empty string (clears input)
     expect(result.current.getNext()).toBe("");
   });
 

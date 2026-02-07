@@ -81,13 +81,10 @@ fn build_map_data(state: &WorldState) -> MapData {
             };
 
             if seen_edges.insert(edge_key) {
-                let locked = loc.locked_exits.values().any(|_key_id| {
-                    loc.exits.values().any(|exit_dest| exit_dest == dest_id)
-                        && loc
-                            .locked_exits
-                            .iter()
-                            .any(|(dir, _)| loc.exits.get(dir) == Some(dest_id))
-                });
+                let locked = loc
+                    .locked_exits
+                    .iter()
+                    .any(|(dir, _)| loc.exits.get(dir) == Some(dest_id));
 
                 edges.push(MapEdge {
                     from: id.clone(),

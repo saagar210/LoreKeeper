@@ -1,10 +1,17 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export function useAutocomplete() {
   const [completions, setCompletions] = useState<string[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
 
   const fetchCompletions = useCallback((prefix: string) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);

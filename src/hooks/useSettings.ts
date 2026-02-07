@@ -24,7 +24,7 @@ export function useSettings() {
   useEffect(() => {
     invoke<GameSettings>("get_settings")
       .then(setSettings)
-      .catch(() => {});
+      .catch((err) => console.warn("Failed to load settings:", err));
   }, []);
 
   const updateSettings = useCallback(

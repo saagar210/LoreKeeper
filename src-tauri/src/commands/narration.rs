@@ -11,6 +11,9 @@ pub fn rate_narration(
     model: String,
     db_state: State<DbState>,
 ) -> Result<(), String> {
+    if rating != 1 && rating != -1 {
+        return Err("Rating must be 1 or -1.".into());
+    }
     let conn = db_state.0.lock().map_err(|e| e.to_string())?;
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(

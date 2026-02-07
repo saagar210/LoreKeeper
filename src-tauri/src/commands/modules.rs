@@ -52,9 +52,23 @@ pub fn list_modules(app: tauri::AppHandle) -> Result<Vec<ModuleInfo>, String> {
 #[tauri::command]
 pub fn load_module(
     path: String,
+    app: tauri::AppHandle,
     game_state: State<GameState>,
 ) -> Result<CommandResponse, String> {
-    let loaded = module_loader::load_module(std::path::Path::new(&path))?;
+    // Validate that the path is within the app's modules directory
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to get app data dir: {}", e))?;
+    let modules_dir = app_data_dir.join("modules");
+    let requested = std::path::Path::new(&path)
+        .canonicalize()
+        .map_err(|e| format!("Invalid path: {}", e))?;
+    if !requested.starts_with(&modules_dir) {
+        return Err("Module path must be within the modules directory.".into());
+    }
+
+    let loaded = module_loader::load_module(&requested)?;
 
     let loc = loaded.locations.get(&loaded.player.location).cloned();
     let mut state = game_state.0.lock().map_err(|e| e.to_string())?;

@@ -14,7 +14,7 @@ export function MiniMap({ locations, player }: Props) {
     invoke<MapData>("get_map_data")
       .then(setMapData)
       .catch(() => setMapData(null));
-  }, [player.location, locations]);
+  }, [player.location, Object.keys(locations).length]);
 
   if (!mapData) {
     return (

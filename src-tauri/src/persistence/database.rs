@@ -3,23 +3,24 @@ use rusqlite::{Connection, Result};
 pub fn initialize_database(conn: &Connection) -> Result<()> {
     conn.execute_batch("PRAGMA journal_mode = WAL;")?;
 
-    let user_version: i32 = conn.pragma_query_value(None, "user_version", |row| row.get(0))?;
+    let mut version: i32 = conn.pragma_query_value(None, "user_version", |row| row.get(0))?;
 
-    if user_version < 1 {
+    if version < 1 {
         migrate_v1(conn)?;
         conn.pragma_update(None, "user_version", 1)?;
+        version = 1;
     }
 
-    let user_version: i32 = conn.pragma_query_value(None, "user_version", |row| row.get(0))?;
-    if user_version < 2 {
+    if version < 2 {
         migrate_v2(conn)?;
         conn.pragma_update(None, "user_version", 2)?;
+        version = 2;
     }
 
-    let user_version: i32 = conn.pragma_query_value(None, "user_version", |row| row.get(0))?;
-    if user_version < 3 {
+    if version < 3 {
         migrate_v3(conn)?;
         conn.pragma_update(None, "user_version", 3)?;
+        let _ = version; // suppress unused warning on final assignment
     }
 
     Ok(())
@@ -95,10 +96,19 @@ fn migrate_v3(conn: &Connection) -> Result<()> {
         "CREATE TABLE IF NOT EXISTS achievements (
             id TEXT PRIMARY KEY,
             unlocked_at TEXT NOT NULL
-        );
-
-        ALTER TABLE playthroughs ADD COLUMN command_log TEXT;",
+        );",
     )?;
+
+    // ALTER TABLE doesn't support IF NOT EXISTS — check column first
+    let has_column: bool = conn
+        .prepare("SELECT COUNT(*) FROM pragma_table_info('playthroughs') WHERE name='command_log'")?
+        .query_row([], |row| row.get::<_, i32>(0))
+        .map(|count| count > 0)?;
+
+    if !has_column {
+        conn.execute_batch("ALTER TABLE playthroughs ADD COLUMN command_log TEXT;")?;
+    }
+
     Ok(())
 }
 

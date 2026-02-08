@@ -53,10 +53,10 @@ pub fn all_achievements() -> Vec<Achievement> {
             icon: "bag".into(),
         },
         Achievement {
-            id: "bookworm".into(),
-            name: "Bookworm".into(),
-            description: "Examine 5 different items.".into(),
-            icon: "book".into(),
+            id: "secret_keeper".into(),
+            name: "Secret Keeper".into(),
+            description: "Discover 3 or more secret commands.".into(),
+            icon: "key".into(),
         },
         Achievement {
             id: "survivor".into(),

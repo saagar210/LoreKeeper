@@ -95,12 +95,21 @@ pub fn export_module(app: tauri::AppHandle, name: String, json: String) -> Resul
         ));
     }
 
+    // Validate name to prevent path traversal
+    let sanitized = name.trim();
+    if sanitized.is_empty() {
+        return Err("Module name cannot be empty.".into());
+    }
+    if sanitized.contains('.') || sanitized.contains('/') || sanitized.contains('\\') {
+        return Err("Module name cannot contain '.', '/', or '\\'.".into());
+    }
+
     // Save to modules directory
     let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     let modules_dir = app_data_dir.join("modules");
     std::fs::create_dir_all(&modules_dir).map_err(|e| e.to_string())?;
 
-    let filename = format!("{}.json", name.to_lowercase().replace(' ', "_"));
+    let filename = format!("{}.json", sanitized.to_lowercase().replace(' ', "_"));
     let filepath = modules_dir.join(&filename);
 
     // Pretty print JSON

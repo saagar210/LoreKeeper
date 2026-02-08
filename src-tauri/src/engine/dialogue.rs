@@ -76,15 +76,16 @@ pub fn enter_dialogue(npc_id: &str, state: &mut WorldState) -> DialogueResult {
         line_type: LineType::Dialogue,
     }];
 
-    // If quest giver in Greeting state, auto-transition to QuestOffered
-    if npc.quest_giver.is_some() && npc.dialogue_state == DialogueState::Greeting {
-        if let Some(npc_mut) = state.npcs.get_mut(npc_id) {
-            npc_mut.dialogue_state = DialogueState::QuestOffered;
-        }
-        if let Some(quest_id) = &npc.quest_giver {
+    // If quest giver in Greeting state, auto-transition to QuestOffered (only if quest exists)
+    if let Some(quest_id) = &npc.quest_giver {
+        if npc.dialogue_state == DialogueState::Greeting {
             if let Some(quest) = state.quests.get(quest_id) {
+                let quest_desc = quest.description.clone();
+                if let Some(npc_mut) = state.npcs.get_mut(npc_id) {
+                    npc_mut.dialogue_state = DialogueState::QuestOffered;
+                }
                 messages.push(OutputLine {
-                    text: format!("\"{}\"", quest.description),
+                    text: format!("\"{}\"", quest_desc),
                     line_type: LineType::Dialogue,
                 });
                 messages.push(OutputLine {

@@ -5,12 +5,19 @@ let masterGain: GainNode | null = null;
 
 function getContext(): AudioContext {
   if (!audioCtx) {
-    audioCtx = new AudioContext();
-    masterGain = audioCtx.createGain();
-    masterGain.connect(audioCtx.destination);
+    try {
+      audioCtx = new AudioContext();
+      masterGain = audioCtx.createGain();
+      masterGain.connect(audioCtx.destination);
+    } catch {
+      // Fallback: create a minimal context that won't crash callers
+      audioCtx = new AudioContext({ sampleRate: 22050 });
+      masterGain = audioCtx.createGain();
+      masterGain.connect(audioCtx.destination);
+    }
   }
   if (audioCtx.state === "suspended") {
-    audioCtx.resume();
+    audioCtx.resume().catch(() => {});
   }
   return audioCtx;
 }
@@ -109,7 +116,11 @@ const soundMap: Record<SoundCue, () => void> = {
 };
 
 export function playSoundCue(cue: SoundCue) {
-  soundMap[cue]();
+  try {
+    soundMap[cue]();
+  } catch {
+    // Audio unavailable — silently skip
+  }
 }
 
 export function playSoundCues(cues: SoundCue[]) {

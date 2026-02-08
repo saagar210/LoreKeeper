@@ -32,7 +32,7 @@ pub fn check_achievements(state: &WorldState, action_type: &ActionType) -> Vec<S
 
     // Secret Keeper: discovered 3+ secret commands
     if state.player.discovered_secrets.len() >= 3 {
-        earned.push("bookworm".to_string());
+        earned.push("secret_keeper".to_string());
     }
 
     // Survivor: survive with 5 or fewer HP (must be alive)

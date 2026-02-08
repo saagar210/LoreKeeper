@@ -167,8 +167,8 @@ fn list_recipes(query: &str, state: &WorldState) -> ActionResult {
             lines.push(OutputLine {
                 text: format!(
                     "  {} + {} = {}",
-                    input_names[0],
-                    input_names.get(1).unwrap_or(&"?".to_string()),
+                    input_names.first().map(|s| s.as_str()).unwrap_or("?"),
+                    input_names.get(1).map(|s| s.as_str()).unwrap_or("?"),
                     output_name
                 ),
                 line_type: LineType::System,

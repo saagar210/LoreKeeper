@@ -185,7 +185,9 @@ pub fn process_turn_events(state: &mut WorldState) -> Vec<OutputLine> {
     let mut expired = Vec::new();
     for effect in &mut state.player.status_effects {
         if effect.damage_per_turn != 0 {
-            state.player.health = (state.player.health - effect.damage_per_turn).max(0);
+            state.player.health = (state.player.health - effect.damage_per_turn)
+                .max(0)
+                .min(state.player.max_health);
             if effect.damage_per_turn > 0 {
                 messages.push(OutputLine {
                     text: format!(
@@ -193,6 +195,14 @@ pub fn process_turn_events(state: &mut WorldState) -> Vec<OutputLine> {
                         effect.name, effect.damage_per_turn, state.player.health
                     ),
                     line_type: LineType::Combat,
+                });
+            } else {
+                messages.push(OutputLine {
+                    text: format!(
+                        "{} restores {} HP. (HP: {})",
+                        effect.name, -effect.damage_per_turn, state.player.health
+                    ),
+                    line_type: LineType::System,
                 });
             }
         }

@@ -1209,6 +1209,19 @@ fn execute_journal(state: &mut WorldState) -> ActionResult {
 }
 
 fn execute_secret(word: &str, state: &mut WorldState) -> ActionResult {
+    // Block secret commands during combat or dialogue
+    if matches!(state.game_mode, GameMode::InCombat(_) | GameMode::InDialogue(_)) {
+        return ActionResult {
+            messages: vec![OutputLine {
+                text: "Now is not the time for incantations.".to_string(),
+                line_type: LineType::System,
+            }],
+            action_type: ActionType::DisplayOnly,
+            narrative_context: None,
+            sound_cues: vec![],
+        };
+    }
+
     let already_discovered = state.player.discovered_secrets.contains(&word.to_string());
     if !already_discovered {
         state.player.discovered_secrets.push(word.to_string());

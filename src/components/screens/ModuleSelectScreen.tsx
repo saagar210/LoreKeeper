@@ -36,13 +36,19 @@ export function ModuleSelectScreen({ onModuleLoaded, onClose }: Props) {
     fetchModules();
   }, [fetchModules]);
 
+  const [loadingModule, setLoadingModule] = useState(false);
+
   const handleLoad = async (path: string) => {
+    if (loadingModule) return;
     setError(null);
+    setLoadingModule(true);
     try {
       const response = await invoke<CommandResponse>("load_module", { path });
       onModuleLoaded(response);
     } catch (err) {
       setError(`Failed to load module: ${err}`);
+    } finally {
+      setLoadingModule(false);
     }
   };
 
@@ -107,9 +113,10 @@ export function ModuleSelectScreen({ onModuleLoaded, onClose }: Props) {
                 </div>
                 <button
                   onClick={() => handleLoad(mod_.path)}
-                  className="border border-[var(--border)] px-3 py-1 text-xs text-[var(--accent)] hover:border-[var(--accent)]"
+                  disabled={loadingModule}
+                  className="border border-[var(--border)] px-3 py-1 text-xs text-[var(--accent)] hover:border-[var(--accent)] disabled:opacity-30"
                 >
-                  Load
+                  {loadingModule ? "Loading..." : "Load"}
                 </button>
               </div>
             ))}

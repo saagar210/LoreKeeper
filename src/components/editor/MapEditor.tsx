@@ -41,10 +41,8 @@ function makeId(name: string): string {
     .replace(/^_|_$/g, "");
 }
 
-let roomCounter = 1;
-
-function defaultRoom(x: number, y: number): EditorRoom {
-  const name = `Room ${roomCounter++}`;
+function defaultRoom(x: number, y: number, counter: number): EditorRoom {
+  const name = `Room ${counter}`;
   return {
     id: makeId(name),
     name,
@@ -186,6 +184,7 @@ export function MapEditor({ onClose }: Props) {
   const [exportName, setExportName] = useState("");
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
+  const roomCounterRef = useRef(1);
 
   const dialogRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -221,7 +220,7 @@ export function MapEditor({ onClose }: Props) {
         const rect = svg.getBoundingClientRect();
         const x = e.clientX - rect.left - ROOM_W / 2;
         const y = e.clientY - rect.top - ROOM_H / 2;
-        const newRoom = defaultRoom(Math.max(0, x), Math.max(0, y));
+        const newRoom = defaultRoom(Math.max(0, x), Math.max(0, y), roomCounterRef.current++);
         setRooms((prev) => [...prev, newRoom]);
         setSelectedRoomId(newRoom.id);
         setSelectedTool("select");
@@ -279,17 +278,27 @@ export function MapEditor({ onClose }: Props) {
               : availTo[0];
 
             if (fromDir && toDir) {
-              setConnections((prev) => [
-                ...prev,
-                {
-                  fromId: connectFrom,
-                  toId: roomId,
-                  fromDir,
-                  toDir,
-                  locked: false,
-                  keyId: null,
-                },
-              ]);
+              // Check for existing connection between these rooms
+              const duplicate = connections.some(
+                (c) =>
+                  (c.fromId === connectFrom && c.toId === roomId) ||
+                  (c.fromId === roomId && c.toId === connectFrom),
+              );
+              if (duplicate) {
+                showStatus("These rooms are already connected.");
+              } else {
+                setConnections((prev) => [
+                  ...prev,
+                  {
+                    fromId: connectFrom,
+                    toId: roomId,
+                    fromDir,
+                    toDir,
+                    locked: false,
+                    keyId: null,
+                  },
+                ]);
+              }
             } else {
               showStatus("No available directions for connection.");
             }
@@ -472,7 +481,7 @@ export function MapEditor({ onClose }: Props) {
     setSelectedRoomId(null);
     setConnectFrom(null);
     setValidation(null);
-    roomCounter = 1;
+    roomCounterRef.current = 1;
   }, []);
 
   // Get room center for connection lines

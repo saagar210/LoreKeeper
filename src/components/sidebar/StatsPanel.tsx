@@ -10,14 +10,12 @@ export function StatsPanel({ player, items }: Props) {
   const hpColor =
     hpPct > 60 ? "var(--hp-high)" : hpPct > 25 ? "var(--hp-mid)" : "var(--hp-low)";
 
-  const weaponBonus =
-    player.equippedWeapon && items[player.equippedWeapon]?.modifier?.attack
-      ? items[player.equippedWeapon].modifier!.attack
-      : 0;
-  const armorBonus =
-    player.equippedArmor && items[player.equippedArmor]?.modifier?.defense
-      ? items[player.equippedArmor].modifier!.defense
-      : 0;
+  const weaponBonus = player.equippedWeapon
+    ? (items[player.equippedWeapon]?.modifier?.attack ?? 0)
+    : 0;
+  const armorBonus = player.equippedArmor
+    ? (items[player.equippedArmor]?.modifier?.defense ?? 0)
+    : 0;
 
   return (
     <div>
@@ -70,8 +68,8 @@ export function StatsPanel({ player, items }: Props) {
       {player.statusEffects.length > 0 && (
         <div className="mt-3 border-t border-[var(--border)] pt-2">
           <div className="text-xs text-[var(--text-dim)] mb-1">Status Effects:</div>
-          {player.statusEffects.map((effect, i) => (
-            <div key={i} className="text-xs text-[var(--text)]">
+          {player.statusEffects.map((effect) => (
+            <div key={effect.name} className="text-xs text-[var(--text)]">
               {effect.name} ({effect.turnsRemaining} turns)
             </div>
           ))}

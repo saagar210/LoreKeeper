@@ -42,6 +42,31 @@ npm run tauri dev
 ollama pull llama3.2
 ```
 
+## Engineering Verification Workflow
+
+Use these commands for predictable local verification:
+
+```bash
+# Frontend-only verification (works without Linux GTK/GLib system libs)
+npm run verify:frontend
+
+# Full parity verification (matches CI intent)
+npm run verify:full
+```
+
+Granular commands:
+
+- `npm run typecheck`
+- `npm run test:frontend`
+- `npm run build:frontend`
+- `npm run lint:rust`
+- `npm run test:rust`
+
+### Linux note for Rust/Tauri checks
+Rust/Tauri checks require GTK/GLib development libraries (for example `glib-2.0`).
+If `cargo clippy` or `cargo test` fails with missing `glib-2.0.pc`, install the system
+packages used in CI (`libwebkit2gtk-4.1-dev`, `libappindicator3-dev`, `librsvg2-dev`, `patchelf`, `libgtk-3-dev`) before rerunning full verification.
+
 ## Project Stats
 
 ```

@@ -182,3 +182,119 @@ export function createOutputLines(count: number): OutputLine[] {
     lineType: "narration" as const,
   }));
 }
+
+// Mock database for integration testing
+interface MockDatabaseStore {
+  saves: Record<string, { data: WorldState; savedAt: string }>;
+  achievements: Array<{ id: string; unlockedAt: string }>;
+  stats: Record<string, number>;
+}
+
+export const mockDatabase: MockDatabaseStore = {
+  saves: {},
+  achievements: [],
+  stats: {
+    commandsEntered: 0,
+    roomsExplored: 0,
+    enemiesDefeated: 0,
+    deaths: 0,
+    questsCompleted: 0,
+  },
+};
+
+export function resetMockDatabase() {
+  mockDatabase.saves = {};
+  mockDatabase.achievements = [];
+  mockDatabase.stats = {
+    commandsEntered: 0,
+    roomsExplored: 0,
+    enemiesDefeated: 0,
+    deaths: 0,
+    questsCompleted: 0,
+  };
+}
+
+// Enhanced mock invoke with database support
+export function setupMockInvokeWithDatabase() {
+  mockInvoke.mockImplementation((command: string, payload?: any) => {
+    switch (command) {
+      case "save_game":
+        const slotName = payload.slotName;
+        const worldState = payload.worldState || createWorldState();
+        mockDatabase.saves[slotName] = {
+          data: worldState,
+          savedAt: new Date().toISOString(),
+        };
+        return Promise.resolve({
+          slotName,
+          savedAt: mockDatabase.saves[slotName].savedAt,
+        });
+
+      case "load_game":
+        const loadSlot = payload.slotName;
+        const saved = mockDatabase.saves[loadSlot];
+        if (!saved) {
+          return Promise.reject(new Error("Save not found"));
+        }
+        return Promise.resolve(
+          createCommandResponse({
+            worldState: saved.data,
+            messages: [{ text: `Loaded from ${loadSlot}`, lineType: "system" }],
+          }),
+        );
+
+      case "list_saves":
+        const slots = Object.entries(mockDatabase.saves).map(
+          ([name, data]) => ({
+            slotName: name,
+            playerLocation: data.data.player.location,
+            playerHealth: data.data.player.health,
+            turnsElapsed: data.data.player.turnsElapsed,
+            questsCompleted: 0,
+            savedAt: data.savedAt,
+          }),
+        );
+        return Promise.resolve(slots);
+
+      case "get_achievements":
+        return Promise.resolve({
+          achievements: [
+            {
+              id: "first_blood",
+              name: "First Blood",
+              description: "Defeat your first enemy",
+              unlockedAt: mockDatabase.achievements.find((a) => a.id === "first_blood")
+                ?.unlockedAt,
+            },
+            {
+              id: "speedrunner",
+              name: "Speedrunner",
+              description: "Complete the game in under 50 turns",
+              unlockedAt: mockDatabase.achievements.find((a) => a.id === "speedrunner")
+                ?.unlockedAt,
+            },
+          ],
+        });
+
+      case "process_command":
+        // Simulate achievement unlock on specific commands
+        if (payload.input?.includes("attack") && payload.input?.includes("goblin")) {
+          // Simulate enemy death triggering achievement
+          if (!mockDatabase.achievements.find((a) => a.id === "first_blood")) {
+            mockDatabase.achievements.push({
+              id: "first_blood",
+              unlockedAt: new Date().toISOString(),
+            });
+          }
+        }
+        return Promise.resolve(
+          createCommandResponse({
+            messages: [{ text: `Processed: ${payload.input}`, lineType: "narration" }],
+          }),
+        );
+
+      default:
+        return Promise.resolve(createCommandResponse());
+    }
+  });
+}

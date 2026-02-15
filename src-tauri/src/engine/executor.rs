@@ -1687,7 +1687,7 @@ mod tests {
         let mut state = make_test_world();
         // Potion has no lore
         execute(GameCommand::Look(Some("potion".into())), &mut state);
-        assert!(state.journal.iter().find(|e| e.id == "item_potion").is_none());
+        assert!(!state.journal.iter().any(|e| e.id == "item_potion"));
     }
 
     #[test]

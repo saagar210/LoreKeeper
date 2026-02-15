@@ -86,8 +86,10 @@ mod tests {
 
     #[test]
     fn tone_in_combat() {
-        let mut state = WorldState::default();
-        state.game_mode = GameMode::InCombat("enemy".into());
+        let state = WorldState {
+            game_mode: GameMode::InCombat("enemy".into()),
+            ..WorldState::default()
+        };
         let tone = determine_tone(&state);
         assert!(tone.contains("tense"));
     }

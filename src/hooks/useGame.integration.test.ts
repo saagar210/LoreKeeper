@@ -157,7 +157,7 @@ describe("useGame Integration Tests", () => {
     });
 
     it("handles corrupted save gracefully", async () => {
-      const { result } = renderHook(() => useGame());
+      renderHook(() => useGame());
 
       // Try to load non-existent save
       let error: Error | null = null;

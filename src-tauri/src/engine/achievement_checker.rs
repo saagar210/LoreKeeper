@@ -66,17 +66,17 @@ pub fn check_achievements(state: &WorldState, action_type: &ActionType) -> Vec<S
     }
 
     // Legendary Collector: equip a legendary item (ethereal_blade, mithril_mail, etc.)
-    let legendary_items = vec!["ethereal_blade", "mithril_mail", "phoenix_feather"];
+    let legendary_items = ["ethereal_blade", "mithril_mail", "phoenix_feather"];
     if state
         .player
         .equipped_weapon
         .as_ref()
-        .map_or(false, |w| legendary_items.contains(&w.as_str()))
+        .is_some_and(|w| legendary_items.contains(&w.as_str()))
         || state
             .player
             .equipped_armor
             .as_ref()
-            .map_or(false, |a| legendary_items.contains(&a.as_str()))
+            .is_some_and(|a| legendary_items.contains(&a.as_str()))
     {
         earned.push("legendary_collector".to_string());
     }

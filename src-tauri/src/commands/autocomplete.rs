@@ -233,7 +233,7 @@ mod tests {
             .map(|s| s.to_string())
             .collect();
         // empty prefix matches all, but get_completions returns empty for empty prefix
-        assert!(candidates.len() > 0);
+        assert!(!candidates.is_empty());
     }
 
     #[test]

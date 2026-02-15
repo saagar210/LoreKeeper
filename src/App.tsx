@@ -1,16 +1,35 @@
 import { invoke } from "@tauri-apps/api/core";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { AchievementsScreen } from "./components/screens/AchievementsScreen";
-import { ReplayScreen } from "./components/screens/ReplayScreen";
 
+// Lazy-load heavy screens for better initial load time
+const AchievementsScreen = lazy(() =>
+  import("./components/screens/AchievementsScreen").then((m) => ({
+    default: m.AchievementsScreen,
+  }))
+);
+const ReplayScreen = lazy(() =>
+  import("./components/screens/ReplayScreen").then((m) => ({
+    default: m.ReplayScreen,
+  }))
+);
 const MapEditor = lazy(() => import("./components/editor/MapEditorLazy"));
+const StatsScreen = lazy(() =>
+  import("./components/screens/StatsScreen").then((m) => ({
+    default: m.StatsScreen,
+  }))
+);
+const ThemeCreator = lazy(() =>
+  import("./components/screens/ThemeCreator").then((m) => ({
+    default: m.ThemeCreator,
+  }))
+);
+
+// Eagerly load critical screens
 import { DeathScreen } from "./components/screens/DeathScreen";
 import { EndingScreen } from "./components/screens/EndingScreen";
 import { SaveLoadScreen } from "./components/screens/SaveLoadScreen";
 import { ModuleSelectScreen } from "./components/screens/ModuleSelectScreen";
 import { SettingsPanel } from "./components/screens/SettingsPanel";
-import { ThemeCreator } from "./components/screens/ThemeCreator";
-import { StatsScreen } from "./components/screens/StatsScreen";
 import { TitleScreen } from "./components/screens/TitleScreen";
 import { SidePanel } from "./components/sidebar/SidePanel";
 import { Terminal } from "./components/terminal/Terminal";
@@ -172,7 +191,9 @@ export default function App() {
           />
         )}
         {overlay === "themeCreator" && (
-          <ThemeCreator onClose={() => setOverlay("settings")} />
+          <Suspense fallback={null}>
+            <ThemeCreator onClose={() => setOverlay("settings")} />
+          </Suspense>
         )}
         {overlay === "load" && (
           <SaveLoadScreen
@@ -182,7 +203,9 @@ export default function App() {
           />
         )}
         {overlay === "stats" && (
-          <StatsScreen onClose={() => setOverlay(null)} />
+          <Suspense fallback={null}>
+            <StatsScreen onClose={() => setOverlay(null)} />
+          </Suspense>
         )}
         {overlay === "modules" && (
           <ModuleSelectScreen
@@ -195,10 +218,14 @@ export default function App() {
           />
         )}
         {overlay === "achievements" && (
-          <AchievementsScreen onClose={() => setOverlay(null)} />
+          <Suspense fallback={null}>
+            <AchievementsScreen onClose={() => setOverlay(null)} />
+          </Suspense>
         )}
         {overlay === "replays" && (
-          <ReplayScreen onClose={() => setOverlay(null)} />
+          <Suspense fallback={null}>
+            <ReplayScreen onClose={() => setOverlay(null)} />
+          </Suspense>
         )}
         {overlay === "editor" && (
           <Suspense fallback={null}>

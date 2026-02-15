@@ -73,7 +73,8 @@ packages used in CI (`libwebkit2gtk-4.1-dev`, `libappindicator3-dev`, `librsvg2-
 Rust source     54 files    ~10,700 lines
 Frontend        42 files    TypeScript strict, 0 errors
 Rust tests      175 passing
-Frontend tests  182 passing (Vitest)
+Frontend tests  189 passing (Vitest)
+E2E tests       20 scenarios (Playwright)
 Clippy          0 warnings
 Bundle          267 KB JS + 18 KB CSS
 ```

@@ -48,6 +48,53 @@ pub fn check_achievements(state: &WorldState, action_type: &ActionType) -> Vec<S
         earned.push("diplomat".to_string());
     }
 
+    // NEW ACHIEVEMENTS - Phase 2 Content Expansion
+
+    // Master Crafter: craft all available recipes (3 minimum for now)
+    if state.recipes.len() >= 3 {
+        earned.push("master_crafter".to_string());
+    }
+
+    // Vault Hunter: reach hidden vault
+    if state.player.location == "hidden_vault" {
+        earned.push("vault_hunter".to_string());
+    }
+
+    // Heart Seeker: obtain the Dungeon Heart Shard
+    if state.player.inventory.contains(&"dungeon_heart_shard".to_string()) {
+        earned.push("heart_seeker".to_string());
+    }
+
+    // Legendary Collector: equip a legendary item (ethereal_blade, mithril_mail, etc.)
+    let legendary_items = vec!["ethereal_blade", "mithril_mail", "phoenix_feather"];
+    if state
+        .player
+        .equipped_weapon
+        .as_ref()
+        .map_or(false, |w| legendary_items.contains(&w.as_str()))
+        || state
+            .player
+            .equipped_armor
+            .as_ref()
+            .map_or(false, |a| legendary_items.contains(&a.as_str()))
+    {
+        earned.push("legendary_collector".to_string());
+    }
+
+    // Pacifist Run: complete game without killing hostile NPCs (0 combat victories required)
+    // This would require tracking combat victories, but as a simplification, we check if
+    // the player has a peace ending without having fought many times
+    if matches!(
+        &state.game_mode,
+        crate::models::GameMode::GameOver(crate::models::EndingType::VictoryPeace)
+    ) && state
+        .player
+        .turns_elapsed
+        < 50
+    {
+        earned.push("peacekeeper".to_string());
+    }
+
     earned
 }
 

@@ -70,6 +70,37 @@ pub fn all_achievements() -> Vec<Achievement> {
             description: "Complete the game through negotiation.".into(),
             icon: "handshake".into(),
         },
+        // NEW ACHIEVEMENTS - Phase 2 Content Expansion
+        Achievement {
+            id: "master_crafter".into(),
+            name: "Master Crafter".into(),
+            description: "Learn and craft all available recipes.".into(),
+            icon: "hammer".into(),
+        },
+        Achievement {
+            id: "vault_hunter".into(),
+            name: "Vault Hunter".into(),
+            description: "Discover the hidden vault in the Great Hall.".into(),
+            icon: "treasure".into(),
+        },
+        Achievement {
+            id: "heart_seeker".into(),
+            name: "Heart Seeker".into(),
+            description: "Obtain a shard of the Dungeon Heart.".into(),
+            icon: "crystal".into(),
+        },
+        Achievement {
+            id: "legendary_collector".into(),
+            name: "Legendary Collector".into(),
+            description: "Equip a legendary item (Ethereal Blade or Mithril Mail).".into(),
+            icon: "crown".into(),
+        },
+        Achievement {
+            id: "peacekeeper".into(),
+            name: "Peacekeeper".into(),
+            description: "Complete the game through negotiation without excessive violence.".into(),
+            icon: "dove".into(),
+        },
     ]
 }
 

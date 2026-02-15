@@ -811,6 +811,44 @@ fn build_npcs() -> HashMap<String, Npc> {
         memory: vec![],
     });
 
+    // NEW NPCs - Phase 2 Content Expansion
+
+    npcs.insert("ghost_cleric".into(), Npc {
+        id: "ghost_cleric".into(),
+        name: "The Ghost Cleric".into(),
+        description: "A translucent figure in tattered clerical robes. His hands are folded in prayer, and a faint aura of sacred light surrounds him. He seems trapped between worlds.".into(),
+        personality_seed: "Wise and melancholic. Speaks in hushed, reverent tones. Knows the secrets of the chapel and the passage below. Seeks redemption through helping the worthy.".into(),
+        dialogue_state: DialogueState::Greeting,
+        hostile: false,
+        health: 1,
+        max_health: 1,
+        attack: 0,
+        defense: 0,
+        items: vec![],
+        quest_giver: Some("venture_below".into()),
+        examine_text: Some("His vestments bear the holy symbol of the chapel. Though translucent, his presence carries weight and authority. You sense he has much knowledge to share.".into()),
+        relationship: 0,
+        memory: vec![],
+    });
+
+    npcs.insert("the_oracle".into(), Npc {
+        id: "the_oracle".into(),
+        name: "The Oracle".into(),
+        description: "A mysterious figure shrouded in darkness, eyes glowing with an otherworldly light. She seems to exist partially outside of reality, her form flickering at the edges.".into(),
+        personality_seed: "Cryptic and knowing. Speaks in riddles and prophecies. Sees the threads of fate. Not hostile, but neither is she trustworthy — she serves fate, not mortals.".into(),
+        dialogue_state: DialogueState::Greeting,
+        hostile: false,
+        health: 30,
+        max_health: 30,
+        attack: 0,
+        defense: 10,
+        items: vec![],
+        quest_giver: Some("seek_the_vault".into()),
+        examine_text: Some("Her eyes hold the knowledge of ages past and futures yet to come. She wears robes of starlight and shadow. Ancient power radiates from her being.".into()),
+        relationship: 0,
+        memory: vec![],
+    });
+
     npcs
 }
 

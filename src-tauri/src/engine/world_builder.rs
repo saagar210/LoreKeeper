@@ -591,6 +591,104 @@ fn build_items() -> HashMap<String, Item> {
         lore: Some("One of the original warding stones of Thornhold. Only those who know the old words can find where it is hidden.".into()),
     });
 
+    // NEW ITEMS - Phase 2 Content Expansion
+
+    items.insert("ethereal_blade".into(), Item {
+        id: "ethereal_blade".into(),
+        name: "Ethereal Blade".into(),
+        description: "A sword that shimmers between worlds, its blade shifting like mist. Deals devastating damage to spectral enemies.".into(),
+        item_type: ItemType::Weapon,
+        modifier: Some(StatModifier { attack: 12, defense: 0, health: 0 }),
+        usable: false,
+        consumable: false,
+        key_id: None,
+        lore: Some("Forged in the void between life and death, this blade cuts through both flesh and spirit. The greatest treasure of Thornhold's armory.".into()),
+    });
+
+    items.insert("blessed_water".into(), Item {
+        id: "blessed_water".into(),
+        name: "Blessed Water".into(),
+        description: "A vial of crystal-clear water blessed by the ancient clerics. It glows with soft radiance.".into(),
+        item_type: ItemType::Consumable,
+        modifier: Some(StatModifier { attack: 0, defense: 0, health: 50 }),
+        usable: true,
+        consumable: true,
+        key_id: None,
+        lore: Some("Water drawn from the sacred spring beneath the chapel, blessed in the old rituals. It purifies body and soul.".into()),
+    });
+
+    items.insert("master_key".into(), Item {
+        id: "master_key".into(),
+        name: "Master Key".into(),
+        description: "An intricate golden key that seems to shift shape slightly. It hums with subtle magic.".into(),
+        item_type: ItemType::Key,
+        modifier: None,
+        usable: false,
+        consumable: false,
+        key_id: Some("universal".into()),
+        lore: Some("The Lord of Thornhold's personal key, capable of opening any lock within the fortress. Long thought lost.".into()),
+    });
+
+    items.insert("dungeon_heart_shard".into(), Item {
+        id: "dungeon_heart_shard".into(),
+        name: "Dungeon Heart Shard".into(),
+        description: "A pulsing fragment of dark crystal, warm to the touch. It throbs in rhythm with your heartbeat.".into(),
+        item_type: ItemType::Miscellaneous,
+        modifier: Some(StatModifier { attack: 5, defense: 5, health: 0 }),
+        usable: false,
+        consumable: false,
+        key_id: None,
+        lore: Some("A piece of the Dungeon Heart itself. Those who bear it gain power, but at what cost?".into()),
+    });
+
+    items.insert("treasure_map".into(), Item {
+        id: "treasure_map".into(),
+        name: "Treasure Map".into(),
+        description: "An aged parchment showing the layout of Thornhold, with certain rooms marked with an 'X'.".into(),
+        item_type: ItemType::Miscellaneous,
+        modifier: None,
+        usable: false,
+        consumable: false,
+        key_id: None,
+        lore: Some("The merchant's last map, marking locations of hidden treasures he never retrieved.".into()),
+    });
+
+    items.insert("mithril_mail".into(), Item {
+        id: "mithril_mail".into(),
+        name: "Mithril Mail".into(),
+        description: "Ancient armor forged from mithril, lightweight yet incredibly durable. It gleams even in darkness.".into(),
+        item_type: ItemType::Armor,
+        modifier: Some(StatModifier { attack: 0, defense: 8, health: 20 }),
+        usable: false,
+        consumable: false,
+        key_id: None,
+        lore: Some("Crafted by master smiths of a forgotten age. Mithril never tarnishes, never breaks.".into()),
+    });
+
+    items.insert("phoenix_feather".into(), Item {
+        id: "phoenix_feather".into(),
+        name: "Phoenix Feather".into(),
+        description: "A brilliant red feather that radiates gentle warmth. Legend says it can revive the dying.".into(),
+        item_type: ItemType::Consumable,
+        modifier: Some(StatModifier { attack: 0, defense: 0, health: 100 }),
+        usable: true,
+        consumable: true,
+        key_id: None,
+        lore: Some("From the phoenix that nested atop Thornhold's highest tower. Only one feather falls per century.".into()),
+    });
+
+    items.insert("ancient_grimoire".into(), Item {
+        id: "ancient_grimoire".into(),
+        name: "Ancient Grimoire".into(),
+        description: "A heavy tome bound in strange leather, filled with arcane symbols and forbidden knowledge.".into(),
+        item_type: ItemType::Miscellaneous,
+        modifier: Some(StatModifier { attack: 2, defense: 0, health: 0 }),
+        usable: false,
+        consumable: false,
+        key_id: None,
+        lore: Some("The collective knowledge of Thornhold's sorcerers. Reading it grants power, but risks madness.".into()),
+    });
+
     items
 }
 
@@ -762,6 +860,68 @@ fn build_quests() -> HashMap<String, Quest> {
         giver: "the_forgotten_one".into(),
         objective: QuestObjective::ReachLocation("final_sanctum".into()),
         reward: vec![],
+        completed: false,
+        active: false,
+        completed_turn: None,
+    });
+
+    // NEW QUESTS - Phase 2 Content Expansion
+
+    quests.insert("venture_below".into(), Quest {
+        id: "venture_below".into(),
+        name: "Venture Below".into(),
+        description: "The old cleric's ghost mentioned a hidden crypt beneath the chapel. Find the Sacred Scroll and use it to unlock the passage downward.".into(),
+        giver: "ghost_cleric".into(),
+        objective: QuestObjective::FetchItem("sacred_scroll".into()),
+        reward: vec!["blessed_water".into()],
+        completed: false,
+        active: false,
+        completed_turn: None,
+    });
+
+    quests.insert("the_armory_challenge".into(), Quest {
+        id: "the_armory_challenge".into(),
+        name: "The Armory Challenge".into(),
+        description: "Legend speaks of a legendary blade hidden in the Armory, but deadly traps protect it. Survive the traps and claim the Ethereal Blade.".into(),
+        giver: "merchant_ghost".into(),
+        objective: QuestObjective::FetchItem("ethereal_blade".into()),
+        reward: vec!["master_key".into()],
+        completed: false,
+        active: false,
+        completed_turn: None,
+    });
+
+    quests.insert("the_wardens_toll".into(), Quest {
+        id: "the_wardens_toll".into(),
+        name: "The Warden's Toll".into(),
+        description: "The Warden in the Deep Chamber guards the path to the Final Sanctum. Defeat this ancient guardian to proceed.".into(),
+        giver: "the_forgotten_one".into(),
+        objective: QuestObjective::KillNpc("the_warden".into()),
+        reward: vec!["ancient_amulet".into()],
+        completed: false,
+        active: false,
+        completed_turn: None,
+    });
+
+    quests.insert("the_keepers_ritual".into(), Quest {
+        id: "the_keepers_ritual".into(),
+        name: "The Keeper's Ritual".into(),
+        description: "The Forgotten One demands three sacred artifacts before granting audience: the Ancient Amulet, the Ethereal Blade, and the Blessed Water. Gather them all.".into(),
+        giver: "the_forgotten_one".into(),
+        objective: QuestObjective::FetchItem("ancient_amulet".into()),
+        reward: vec!["dungeon_heart_shard".into()],
+        completed: false,
+        active: false,
+        completed_turn: None,
+    });
+
+    quests.insert("seek_the_vault".into(), Quest {
+        id: "seek_the_vault".into(),
+        name: "Seek the Hidden Vault".into(),
+        description: "Rumors persist of a secret vault hidden within Thornhold, accessible only through knowledge of ancient words. Use the command 'plugh' in the Great Hall to reveal it.".into(),
+        giver: "merchant_ghost".into(),
+        objective: QuestObjective::ReachLocation("hidden_vault".into()),
+        reward: vec!["treasure_map".into()],
         completed: false,
         active: false,
         completed_turn: None,

@@ -4,10 +4,13 @@ import tailwindcss from "@tailwindcss/vite";
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
+// @ts-expect-error process is a nodejs global
+const cacheDir = process.env.VITE_CACHE_DIR;
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
   plugins: [react(), tailwindcss()],
+  cacheDir: cacheDir || "node_modules/.vite",
 
   clearScreen: false,
   server: {

@@ -42,6 +42,37 @@ npm run tauri dev
 ollama pull llama3.2
 ```
 
+## Dev Modes
+
+### Normal dev
+
+```bash
+npm run tauri dev
+```
+
+- Fastest restarts after the first compile because Rust/Vite build artifacts are kept in the repo (`src-tauri/target`, `node_modules/.vite`).
+- Uses more disk over time.
+
+### Lean dev (low disk)
+
+```bash
+npm run dev:lean
+```
+
+- Starts the same app flow (`tauri dev`) but redirects heavy temporary build output to OS temp directories.
+- Temporary Cargo and Vite caches are removed automatically when the process exits.
+- Tradeoff: first startup and recompiles are slower than normal dev because cached artifacts are not persisted between runs.
+
+## Cleanup Commands
+
+```bash
+# Remove heavy build artifacts only (keeps dependencies installed)
+npm run clean:heavy
+
+# Remove all reproducible local caches (includes node_modules)
+npm run clean:local
+```
+
 ## Engineering Verification Workflow
 
 Use these commands for predictable local verification:

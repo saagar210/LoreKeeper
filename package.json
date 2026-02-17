@@ -20,7 +20,27 @@
     "verify:frontend": "npm run typecheck && npm run test:frontend && npm run build:frontend",
     "verify:full": "npm run verify:frontend && npm run lint:rust && npm run test:rust",
     "clean:heavy": "scripts/clean-heavy-artifacts.sh",
-    "clean:local": "scripts/clean-local-all.sh"
+    "clean:local": "scripts/clean-local-all.sh",
+    "prepare": "husky",
+    "commit": "cz",
+    "commitlint": "commitlint",
+    "git:guard:branch": "bash scripts/git/guard-branch.sh",
+    "git:guard:no-main-push": "bash scripts/git/guard-no-main-push.sh",
+    "git:guard:atomic": "bash scripts/git/guard-atomic.sh",
+    "git:guard:generated": "bash scripts/git/guard-generated.sh",
+    "git:guard:large-files": "bash scripts/git/guard-large-files.sh",
+    "git:guard:secrets": "bash scripts/git/guard-secrets.sh",
+    "git:guard:all": "pnpm git:guard:branch && pnpm git:guard:atomic && pnpm git:guard:generated && pnpm git:guard:large-files && pnpm git:guard:secrets",
+    "git:commit:propose": "node scripts/git/propose-commit-message.mjs",
+    "git:session:save": "bash scripts/git/session-save.sh",
+    "git:session:resume": "bash scripts/git/session-resume.sh",
+    "pr:notes": "bash scripts/git/generate-pr-notes.sh",
+    "perf:bundle": "node scripts/perf/bundle-report.mjs",
+    "perf:build": "node scripts/perf/measure-build-time.mjs",
+    "perf:assets": "bash scripts/perf/check-assets.sh",
+    "perf:memory": "node --expose-gc scripts/perf/memory-smoke.mjs",
+    "perf:summary": "node scripts/perf/summarize.mjs",
+    "lint-staged": "lint-staged"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
@@ -41,6 +61,24 @@
     "typescript": "~5.8.3",
     "vite": "^7.0.4",
     "@playwright/test": "^1.52.0",
-    "vitest": "^4.0.18"
+    "vitest": "^4.0.18",
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
+    "@commitlint/cz-commitlint": "^19.8.1",
+    "@lhci/cli": "^0.15.1",
+    "commitizen": "^4.3.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.2",
+    "prettier": "^3.6.2"
+  },
+  "config": {
+    "commitizen": {
+      "path": "@commitlint/cz-commitlint"
+    }
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,mjs,cjs,json,md,css,scss,yml,yaml}": [
+      "prettier --write"
+    ]
   }
 }

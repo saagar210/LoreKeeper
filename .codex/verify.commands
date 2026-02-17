@@ -1,0 +1,7 @@
+pnpm lint
+pnpm typecheck
+pnpm test:coverage
+pnpm test:integration
+pnpm test:e2e:smoke
+pnpm docs:generate
+pnpm docs:check

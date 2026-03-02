@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState } from "react";
 import { trapFocus } from "../../lib/focusTrap";
 import { formatDate } from "../../lib/format";
+import { TAURI_COMMANDS } from "../../lib/tauriCommands";
 import type { AchievementInfo } from "../../store/types";
 
 const iconMap: Record<string, string> = {
@@ -25,7 +26,7 @@ export function AchievementsScreen({ onClose }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    invoke<AchievementInfo[]>("get_achievements")
+    invoke<AchievementInfo[]>(TAURI_COMMANDS.getAchievements)
       .then(setAchievements)
       .catch((err) => console.error("Failed to load achievements:", err))
       .finally(() => setLoading(false));

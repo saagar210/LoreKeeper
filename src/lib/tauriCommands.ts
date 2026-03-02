@@ -1,0 +1,33 @@
+export const TAURI_COMMANDS = {
+  initializeGame: "initialize_game",
+  newGame: "new_game",
+  processCommand: "process_command",
+  saveGame: "save_game",
+  loadGame: "load_game",
+  listSaves: "list_saves",
+  deleteSave: "delete_save",
+  getSettings: "get_settings",
+  updateSettings: "update_settings",
+  getOllamaStatus: "get_ollama_status",
+  getAvailableModels: "get_available_models",
+  getCompletions: "get_completions",
+  getMapData: "get_map_data",
+  getStats: "get_stats",
+  resetStats: "reset_stats",
+  getCombatLog: "get_combat_log",
+  rateNarration: "rate_narration",
+  retryNarration: "retry_narration",
+  listModules: "list_modules",
+  loadModule: "load_module",
+  saveCustomTheme: "save_custom_theme",
+  listCustomThemes: "list_custom_themes",
+  deleteCustomTheme: "delete_custom_theme",
+  getAchievements: "get_achievements",
+  listReplays: "list_replays",
+  getReplay: "get_replay",
+  validateModuleJson: "validate_module_json",
+  exportModule: "export_module",
+} as const;
+
+export type TauriCommandName =
+  (typeof TAURI_COMMANDS)[keyof typeof TAURI_COMMANDS];

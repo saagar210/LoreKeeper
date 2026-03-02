@@ -7,6 +7,8 @@ interface Props {
   onClose: () => void;
   onThemeChange: (theme: ThemeName) => void;
   onOpenThemeCreator?: () => void;
+  onOpenSave?: () => void;
+  onOpenLoad?: () => void;
 }
 
 const themeOptions: { value: ThemeName; label: string }[] = [
@@ -16,7 +18,13 @@ const themeOptions: { value: ThemeName; label: string }[] = [
   { value: "darkModern", label: "Dark Modern" },
 ];
 
-export function SettingsPanel({ onClose, onThemeChange, onOpenThemeCreator }: Props) {
+export function SettingsPanel({
+  onClose,
+  onThemeChange,
+  onOpenThemeCreator,
+  onOpenSave,
+  onOpenLoad,
+}: Props) {
   const { settings, updateSettings, ollamaStatus, checkOllama, models, getModels } =
     useSettings();
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -59,6 +67,30 @@ export function SettingsPanel({ onClose, onThemeChange, onOpenThemeCreator }: Pr
         </div>
 
         <div className="space-y-6">
+          {(onOpenSave || onOpenLoad) && (
+            <div>
+              <label className="text-sm text-[var(--text)] font-bold block mb-2">Game</label>
+              <div className="flex gap-2">
+                {onOpenSave && (
+                  <button
+                    onClick={onOpenSave}
+                    className="border border-[var(--accent)] px-3 py-1 text-xs text-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--bg)]"
+                  >
+                    Save Game
+                  </button>
+                )}
+                {onOpenLoad && (
+                  <button
+                    onClick={onOpenLoad}
+                    className="border border-[var(--accent)] px-3 py-1 text-xs text-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--bg)]"
+                  >
+                    Load Game
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Theme */}
           <div>
             <label className="text-sm text-[var(--text)] font-bold block mb-2">Theme</label>

@@ -34,6 +34,7 @@ import { TitleScreen } from "./components/screens/TitleScreen";
 import { SidePanel } from "./components/sidebar/SidePanel";
 import { Terminal } from "./components/terminal/Terminal";
 import { Transition } from "./components/Transition";
+import { TAURI_COMMANDS } from "./lib/tauriCommands";
 import { applyTheme } from "./lib/themes";
 import type {
   CommandResponse,
@@ -90,7 +91,7 @@ export default function App() {
 
   const handleQuickSave = useCallback(async () => {
     try {
-      await invoke("save_game", { slotName: "quicksave" });
+      await invoke(TAURI_COMMANDS.saveGame, { slotName: "quicksave" });
       showStatus("Game saved.");
     } catch (err) {
       showStatus(`Save failed: ${err}`);
@@ -100,6 +101,7 @@ export default function App() {
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
       if (e.key === "Escape") {
         if (overlay) {
           setOverlay(null);
@@ -109,7 +111,7 @@ export default function App() {
           setOverlay("settings");
         }
       }
-      if ((e.metaKey || e.ctrlKey) && e.key === "s" && screen === "game") {
+      if ((e.metaKey || e.ctrlKey) && key === "s" && screen === "game") {
         e.preventDefault();
         handleQuickSave();
       }
@@ -121,7 +123,7 @@ export default function App() {
   const handleNewGame = useCallback(async () => {
     setOverlay(null);
     try {
-      const response = await invoke<CommandResponse>("new_game");
+      const response = await invoke<CommandResponse>(TAURI_COMMANDS.newGame);
       setWorldState(response.worldState);
       setScreen("game");
     } catch (err) {
@@ -131,7 +133,7 @@ export default function App() {
 
   const handleSave = useCallback(async (slot: string) => {
     try {
-      await invoke("save_game", { slotName: slot });
+      await invoke(TAURI_COMMANDS.saveGame, { slotName: slot });
       showStatus(`Saved to '${slot}'.`);
     } catch (err) {
       showStatus(`Save failed: ${err}`);
@@ -140,7 +142,7 @@ export default function App() {
 
   const handleLoad = useCallback(async (slot: string) => {
     try {
-      const response = await invoke<CommandResponse>("load_game", {
+      const response = await invoke<CommandResponse>(TAURI_COMMANDS.loadGame, {
         slotName: slot,
       });
       setWorldState(response.worldState);
@@ -188,6 +190,7 @@ export default function App() {
             onClose={() => setOverlay(null)}
             onThemeChange={handleThemeChange}
             onOpenThemeCreator={() => setOverlay("themeCreator")}
+            onOpenLoad={() => setOverlay("load")}
           />
         )}
         {overlay === "themeCreator" && (
@@ -257,8 +260,8 @@ export default function App() {
       {worldState && isMobile && sidebarOpen && (
         <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />
       )}
-      {worldState && (
-        <div className={isMobile ? `sidebar-drawer ${sidebarOpen ? "open" : ""}` : ""}>
+      {worldState && (!isMobile || sidebarOpen) && (
+        <div className={isMobile ? "sidebar-drawer open" : ""}>
           <SidePanel
             worldState={worldState}
             onClose={isMobile ? () => setSidebarOpen(false) : undefined}
@@ -291,6 +294,8 @@ export default function App() {
           onClose={() => setOverlay(null)}
           onThemeChange={handleThemeChange}
           onOpenThemeCreator={() => setOverlay("themeCreator")}
+          onOpenSave={() => setOverlay("save")}
+          onOpenLoad={() => setOverlay("load")}
         />
       )}
 

@@ -3,6 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { playSoundCues, setVolume } from "../lib/audio";
 import { MAX_HISTORY_LINES } from "../lib/constants";
+import { TAURI_COMMANDS } from "../lib/tauriCommands";
 import type {
   CommandResponse,
   GameSettings,
@@ -98,7 +99,7 @@ export function useGame() {
 
   const initializeGame = useCallback(async () => {
     try {
-      const response = await invoke<CommandResponse>("initialize_game");
+      const response = await invoke<CommandResponse>(TAURI_COMMANDS.initializeGame);
       setHistory(response.messages);
       setWorldState(response.worldState);
       setIsReady(true);
@@ -121,7 +122,7 @@ export function useGame() {
       ]);
 
       try {
-        const response = await invoke<CommandResponse>("process_command", {
+        const response = await invoke<CommandResponse>(TAURI_COMMANDS.processCommand, {
           input,
         });
         setWorldState(response.worldState);
@@ -141,7 +142,7 @@ export function useGame() {
 
   const newGame = useCallback(async () => {
     try {
-      const response = await invoke<CommandResponse>("new_game");
+      const response = await invoke<CommandResponse>(TAURI_COMMANDS.newGame);
       setHistory(response.messages);
       setWorldState(response.worldState);
       handleSoundCues(response);

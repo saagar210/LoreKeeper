@@ -7,6 +7,7 @@ import {
   themes,
   themeVarNames,
 } from "../../lib/themes";
+import { TAURI_COMMANDS } from "../../lib/tauriCommands";
 import type { CustomThemeInfo, ThemeConfig } from "../../store/types";
 
 interface Props {
@@ -54,7 +55,7 @@ export function ThemeCreator({ onClose }: Props) {
 
   const fetchThemes = useCallback(async () => {
     try {
-      const result = await invoke<CustomThemeInfo[]>("list_custom_themes");
+      const result = await invoke<CustomThemeInfo[]>(TAURI_COMMANDS.listCustomThemes);
       setSavedThemes(result);
     } catch {
       // ignore
@@ -85,7 +86,7 @@ export function ThemeCreator({ onClose }: Props) {
       return;
     }
     try {
-      await invoke("save_custom_theme", {
+      await invoke(TAURI_COMMANDS.saveCustomTheme, {
         name,
         config: JSON.stringify(config),
       });
@@ -108,7 +109,7 @@ export function ThemeCreator({ onClose }: Props) {
 
   const handleDelete = async (name: string) => {
     try {
-      await invoke("delete_custom_theme", { name });
+      await invoke(TAURI_COMMANDS.deleteCustomTheme, { name });
       fetchThemes();
       setMessage(`Deleted '${name}'.`);
     } catch (err) {

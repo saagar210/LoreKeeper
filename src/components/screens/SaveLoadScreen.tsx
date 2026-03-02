@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { trapFocus } from "../../lib/focusTrap";
 import { formatRelativeTime } from "../../lib/format";
+import { TAURI_COMMANDS } from "../../lib/tauriCommands";
 import type { SaveSlotInfo } from "../../store/types";
 
 interface Props {
@@ -25,7 +26,7 @@ export function SaveLoadScreen({ mode, onSave, onLoad, onClose }: Props) {
 
   const refreshSaves = useCallback(async () => {
     try {
-      const result = await invoke<SaveSlotInfo[]>("list_saves");
+      const result = await invoke<SaveSlotInfo[]>(TAURI_COMMANDS.listSaves);
       setSaves(result);
     } catch {
       setSaves([]);
@@ -53,7 +54,7 @@ export function SaveLoadScreen({ mode, onSave, onLoad, onClose }: Props) {
     }
     setConfirmDelete(null);
     try {
-      await invoke("delete_save", { slotName: slot });
+      await invoke(TAURI_COMMANDS.deleteSave, { slotName: slot });
       refreshSaves();
     } catch (err) {
       console.error("Delete failed:", err);

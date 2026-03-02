@@ -50,7 +50,7 @@ ollama pull llama3.2
 npm run tauri dev
 ```
 
-- Fastest restarts after the first compile because Rust/Vite build artifacts are kept in the repo (`src-tauri/target`, `node_modules/.vite`).
+- Fastest restarts after the first compile because Rust/Vite build artifacts are kept locally (`$HOME/.cache/lorekeeper/cargo-target`, `node_modules/.vite`).
 - Uses more disk over time.
 
 ### Lean dev (low disk)
@@ -61,7 +61,16 @@ npm run dev:lean
 
 - Starts the same app flow (`tauri dev`) but redirects heavy temporary build output to OS temp directories.
 - Temporary Cargo and Vite caches are removed automatically when the process exits.
+- Extra Tauri args are supported with `npm run dev:lean -- <args>`.
 - Tradeoff: first startup and recompiles are slower than normal dev because cached artifacts are not persisted between runs.
+
+### Daily low-disk command
+
+Use this daily command to keep local disk growth under control while developing:
+
+```bash
+npm run dev:lean
+```
 
 ## Cleanup Commands
 
@@ -73,9 +82,20 @@ npm run clean:heavy
 npm run clean:local
 ```
 
+Both cleanup commands also clear the default Rust verification cache at
+`$HOME/.cache/lorekeeper/cargo-target` (or `LOREKEEPER_CARGO_TARGET_DIR` if set).
+
 ## Engineering Verification Workflow
 
-Use these commands for predictable local verification:
+Use this canonical command for deterministic local verification:
+
+```bash
+bash .codex/scripts/run_verify_commands.sh
+```
+
+It executes `.codex/verify.commands` in order and is the source of truth for local gate runs.
+
+Additional scoped verification commands:
 
 ```bash
 # Frontend-only verification (works without Linux GTK/GLib system libs)
@@ -92,11 +112,53 @@ Granular commands:
 - `npm run build:frontend`
 - `npm run lint:rust`
 - `npm run test:rust`
+- `npm run perf:bundle`
+- `npm run perf:build`
+- `npm run perf:assets`
+- `npm run perf:memory`
+- `npm run perf:lhci`
+- `npm run perf:lhci:prod`
+
+### Performance profile policy
+- Baseline checks (`perf-foundation`) run on pull requests for continuous signal.
+- Enforced production budgets (`perf-enforced`) run when `PERF_PROFILE=production`.
+- Required gate policy: `fail` or `not-run` on required checks blocks done-state.
 
 ### Linux note for Rust/Tauri checks
 Rust/Tauri checks require GTK/GLib development libraries (for example `glib-2.0`).
 If `cargo clippy` or `cargo test` fails with missing `glib-2.0.pc`, install the system
 packages used in CI (`libwebkit2gtk-4.1-dev`, `libappindicator3-dev`, `librsvg2-dev`, `patchelf`, `libgtk-3-dev`) before rerunning full verification.
+
+### Rust verification cache location
+`npm run tauri ...`, `npm run lint:rust`, and `npm run test:rust` default Cargo build output to
+`$HOME/.cache/lorekeeper/cargo-target` (override with `LOREKEEPER_CARGO_TARGET_DIR`).
+This avoids path-separator issues on some machines and keeps cleanup behavior deterministic.
+
+## Codex Local Environment Actions
+
+Configure these in Codex App `Settings > Local environments` and check the generated `.codex` config into the repo.
+
+Setup script:
+
+```bash
+npm install
+npm run build:frontend
+```
+
+Recommended actions:
+- `Run app`: `npm run tauri dev`
+- `Lean dev`: `npm run dev:lean`
+- `Verify frontend`: `npm run verify:frontend`
+- `Verify full`: `npm run verify:full`
+- `Verify canonical`: `bash .codex/scripts/run_verify_commands.sh`
+- `Cleanup heavy`: `npm run clean:heavy`
+- `Cleanup local`: `npm run clean:local`
+
+## Feature Maturity Policy
+
+- `Stable` features are default for production paths.
+- `Beta` and `Experimental` features require explicit owner, rollback plan, and fallback path.
+- Current repository default: multi-agent workflows are optional accelerators, not required gates.
 
 ## Project Stats
 

@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { trapFocus } from "../../lib/focusTrap";
+import { TAURI_COMMANDS } from "../../lib/tauriCommands";
 import type {
   Direction,
   EditorConnection,
@@ -440,7 +441,7 @@ export function MapEditor({ onClose }: Props) {
   const handleValidate = useCallback(async () => {
     const json = buildWorldStateJson(rooms, connections, items, npcs);
     try {
-      const result = await invoke<ValidationResult>("validate_module_json", { json });
+      const result = await invoke<ValidationResult>(TAURI_COMMANDS.validateModuleJson, { json });
       setValidation(result);
       if (result.valid) {
         showStatus("Module is valid.");
@@ -460,7 +461,7 @@ export function MapEditor({ onClose }: Props) {
     }
     const json = buildWorldStateJson(rooms, connections, items, npcs);
     try {
-      const path = await invoke<string>("export_module", {
+      const path = await invoke<string>(TAURI_COMMANDS.exportModule, {
         name: exportName.trim(),
         json,
       });

@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { trapFocus } from "../../lib/focusTrap";
+import { TAURI_COMMANDS } from "../../lib/tauriCommands";
 import type { CommandResponse, ModuleInfo } from "../../store/types";
 
 interface Props {
@@ -23,7 +24,7 @@ export function ModuleSelectScreen({ onModuleLoaded, onClose }: Props) {
   const fetchModules = useCallback(async () => {
     setError(null);
     try {
-      const result = await invoke<ModuleInfo[]>("list_modules");
+      const result = await invoke<ModuleInfo[]>(TAURI_COMMANDS.listModules);
       setModules(result);
     } catch (err) {
       setError(`Failed to list modules: ${err}`);
@@ -43,7 +44,7 @@ export function ModuleSelectScreen({ onModuleLoaded, onClose }: Props) {
     setError(null);
     setLoadingModule(true);
     try {
-      const response = await invoke<CommandResponse>("load_module", { path });
+      const response = await invoke<CommandResponse>(TAURI_COMMANDS.loadModule, { path });
       onModuleLoaded(response);
     } catch (err) {
       setError(`Failed to load module: ${err}`);

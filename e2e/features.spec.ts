@@ -14,11 +14,20 @@ test.describe("Integration Flows", () => {
     await game.typeCommand("take rusty_lantern");
     await expect(game.gameOutput).toContainText("rusty", { timeout: 3000 });
 
-    // Quick save (Ctrl+S)
-    await page.keyboard.press("Control+S");
+    // Quick save: dispatch key combo directly to avoid browser-reserved shortcut flakiness
+    await page.evaluate(() => {
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "s",
+          ctrlKey: true,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    });
 
     // Wait for save confirmation
-    await expect(page.locator("text=Game saved")).toBeVisible({ timeout: 3000 });
+    await expect(page.locator("text=Game saved.")).toBeVisible({ timeout: 3000 });
 
     // Execute more commands to change state
     await game.typeCommand("go east");
@@ -28,17 +37,18 @@ test.describe("Integration Flows", () => {
     await page.keyboard.press("Escape");
     await game.loadGameButton.click();
 
-    // Load from quicksave
-    const quicksaveButton = page.getByRole("button", { name: /quicksave/i });
-    if (await quicksaveButton.isVisible()) {
-      await quicksaveButton.click();
+    // Load from quicksave row
+    const quicksaveRow = page.locator("div", { hasText: /quicksave/i })
+      .filter({ has: page.getByRole("button", { name: "Load" }) })
+      .first();
+    await expect(quicksaveRow).toBeVisible({ timeout: 3000 });
+    await quicksaveRow.getByRole("button", { name: "Load" }).click();
 
-      // Verify loaded state: should see courtyard, not great_hall
-      await expect(game.gameOutput).toContainText("Courtyard", { timeout: 3000 });
-    } else {
-      // If no quicksave exists, that's also acceptable for this test
-      console.log("No quicksave found - skipping load verification");
-    }
+    // Verify loaded state in sidebar location
+    const locationHeading = page.getByRole("complementary", { name: "Game information" })
+      .getByRole("heading", { level: 3 })
+      .first();
+    await expect(locationHeading).toHaveText("Courtyard", { timeout: 3000 });
   });
 
   test("Achievement notification appears on unlock", async ({ page }) => {

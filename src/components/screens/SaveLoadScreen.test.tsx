@@ -10,9 +10,10 @@ vi.mock("@tauri-apps/api/core", () => ({
 const { SaveLoadScreen } = await import("./SaveLoadScreen");
 
 describe("SaveLoadScreen", () => {
-  it("has role=dialog", () => {
+  it("has role=dialog", async () => {
     mockInvoke.mockResolvedValueOnce([]);
     render(<SaveLoadScreen mode="load" onClose={vi.fn()} />);
+    await waitFor(() => expect(mockInvoke).toHaveBeenCalled());
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
@@ -77,6 +78,7 @@ describe("SaveLoadScreen", () => {
   it("shows save input in save mode", async () => {
     mockInvoke.mockResolvedValueOnce([]);
     render(<SaveLoadScreen mode="save" onClose={vi.fn()} />);
+    await waitFor(() => expect(mockInvoke).toHaveBeenCalled());
     expect(screen.getByPlaceholderText("Save name...")).toBeInTheDocument();
   });
 

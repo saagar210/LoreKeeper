@@ -17,6 +17,8 @@ const DEFAULT_SETTINGS: GameSettings = {
   difficulty: "normal",
 };
 
+const shouldLogSettingsErrors = import.meta.env.MODE !== "test";
+
 export function useSettings() {
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
   const [ollamaStatus, setOllamaStatus] = useState<OllamaStatus>({
@@ -28,7 +30,11 @@ export function useSettings() {
   useEffect(() => {
     invoke<GameSettings>(TAURI_COMMANDS.getSettings)
       .then(setSettings)
-      .catch((err) => console.warn("Failed to load settings:", err));
+      .catch((err) => {
+        if (shouldLogSettingsErrors) {
+          console.warn("Failed to load settings:", err);
+        }
+      });
   }, []);
 
   const settingsRef = useRef(settings);
@@ -41,7 +47,9 @@ export function useSettings() {
         await invoke(TAURI_COMMANDS.updateSettings, { settings: updated });
         setSettings(updated);
       } catch (err) {
-        console.error("Failed to update settings:", err);
+        if (shouldLogSettingsErrors) {
+          console.error("Failed to update settings:", err);
+        }
       }
     },
     [],

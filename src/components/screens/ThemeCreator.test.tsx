@@ -1,9 +1,11 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ThemeCreator } from "./ThemeCreator";
 
+const mockInvoke = vi.fn().mockResolvedValue([]);
+
 vi.mock("@tauri-apps/api/core", () => ({
-  invoke: vi.fn().mockResolvedValue([]),
+  invoke: (...args: unknown[]) => mockInvoke(...args),
 }));
 
 vi.mock("../../lib/focusTrap", () => ({
@@ -40,31 +42,41 @@ vi.mock("../../lib/themes", () => ({
 }));
 
 describe("ThemeCreator", () => {
-  it("renders heading", () => {
+  beforeEach(() => {
+    mockInvoke.mockClear();
+    mockInvoke.mockResolvedValue([]);
+  });
+
+  it("renders heading", async () => {
     render(<ThemeCreator onClose={vi.fn()} />);
+    await waitFor(() => expect(mockInvoke).toHaveBeenCalled());
     expect(screen.getByText("Theme Creator")).toBeInTheDocument();
   });
 
-  it("renders color pickers for all theme vars", () => {
+  it("renders color pickers for all theme vars", async () => {
     render(<ThemeCreator onClose={vi.fn()} />);
+    await waitFor(() => expect(mockInvoke).toHaveBeenCalled());
     expect(screen.getByText("Background")).toBeInTheDocument();
     expect(screen.getByText("Accent")).toBeInTheDocument();
     expect(screen.getByText("Error")).toBeInTheDocument();
   });
 
-  it("renders preview section", () => {
+  it("renders preview section", async () => {
     render(<ThemeCreator onClose={vi.fn()} />);
+    await waitFor(() => expect(mockInvoke).toHaveBeenCalled());
     expect(screen.getByText("Normal text sample.")).toBeInTheDocument();
     expect(screen.getByText("Combat text.")).toBeInTheDocument();
   });
 
-  it("has dialog role", () => {
+  it("has dialog role", async () => {
     render(<ThemeCreator onClose={vi.fn()} />);
+    await waitFor(() => expect(mockInvoke).toHaveBeenCalled());
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
-  it("renders save and reset buttons", () => {
+  it("renders save and reset buttons", async () => {
     render(<ThemeCreator onClose={vi.fn()} />);
+    await waitFor(() => expect(mockInvoke).toHaveBeenCalled());
     expect(screen.getByText("Save")).toBeInTheDocument();
     expect(screen.getByText("Reset")).toBeInTheDocument();
   });

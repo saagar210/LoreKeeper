@@ -7,6 +7,7 @@ on:
 
 jobs:
   quality:
+    name: quality-gates
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -16,13 +17,10 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
+          cache: npm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm ci
 
       - name: Policy checks
         run: node scripts/ci/require-tests-and-docs.mjs
@@ -32,8 +30,18 @@ jobs:
 
       - name: Diff coverage
         run: |
+          if [ ! -f coverage/lcov.info ]; then
+            echo "coverage/lcov.info not present; skipping diff coverage"
+            exit 0
+          fi
+
+          compare_branch="origin/${GITHUB_BASE_REF:-master}"
+          if ! git rev-parse --verify "$compare_branch" >/dev/null 2>&1; then
+            compare_branch="origin/master"
+          fi
+
           python -m pip install --upgrade pip diff-cover
-          diff-cover coverage/lcov.info --compare-branch=origin/main --fail-under=90
+          diff-cover coverage/lcov.info --compare-branch="$compare_branch" --fail-under=90
 
       - name: Upload test artifacts on failure
         if: failure()

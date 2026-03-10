@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { trapFocus } from "../../lib/focusTrap";
+import { TAURI_COMMANDS } from "../../lib/tauriCommands";
 import type { GameStats } from "../../store/types";
 
 interface Props {
@@ -24,7 +25,7 @@ export function StatsScreen({ onClose }: Props) {
 
   const fetchStats = useCallback(async () => {
     try {
-      const result = await invoke<GameStats>("get_stats");
+      const result = await invoke<GameStats>(TAURI_COMMANDS.getStats);
       setStats(result);
     } catch {
       setStats(null);
@@ -43,7 +44,7 @@ export function StatsScreen({ onClose }: Props) {
 
   const handleReset = async () => {
     try {
-      await invoke("reset_stats");
+      await invoke(TAURI_COMMANDS.resetStats);
       fetchStats();
     } catch (err) {
       console.error("Failed to reset stats:", err);

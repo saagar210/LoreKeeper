@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mockInvoke } from "../test/mocks";
 import { createSettings } from "../test/mocks";
 
@@ -11,6 +11,23 @@ vi.mock("@tauri-apps/api/core", () => ({
 const { useSettings } = await import("./useSettings");
 
 describe("useSettings", () => {
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+  let windowErrorSpy: ReturnType<typeof vi.spyOn> | null = null;
+
+  beforeEach(() => {
+    errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    if (typeof window !== "undefined" && window.console !== console) {
+      windowErrorSpy = vi.spyOn(window.console, "error").mockImplementation(() => {});
+    }
+    mockInvoke.mockReset();
+  });
+
+  afterEach(() => {
+    errorSpy.mockRestore();
+    windowErrorSpy?.mockRestore();
+    windowErrorSpy = null;
+  });
+
   it("loads settings on mount", async () => {
     const saved = createSettings({ theme: "parchment" });
     mockInvoke.mockResolvedValueOnce(saved);
@@ -44,9 +61,17 @@ describe("useSettings", () => {
       expect(mockInvoke).toHaveBeenCalledWith("get_settings");
     });
 
-    mockInvoke.mockResolvedValueOnce(undefined); // update call
+    mockInvoke.mockResolvedValueOnce(
+      createSettings({ typewriterSpeed: 50 }),
+    ); // update call
     await act(async () => {
-      await result.current.updateSettings({ typewriterSpeed: 50 });
+      const updateResult = await result.current.updateSettings({
+        typewriterSpeed: 50,
+      });
+      expect(updateResult).toEqual({
+        ok: true,
+        settings: expect.objectContaining({ typewriterSpeed: 50 }),
+      });
     });
 
     expect(mockInvoke).toHaveBeenCalledWith("update_settings", {

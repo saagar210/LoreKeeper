@@ -37,3 +37,6 @@ coverage/
 *.njsproj
 *.sln
 *.sw?
+
+# Internal release artifacts
+release-artifacts/

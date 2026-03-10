@@ -20,6 +20,15 @@ vi.mock("../../hooks/useGame", () => ({
   }),
 }));
 
+vi.mock("../../hooks/useSettings", () => ({
+  useSettings: () => ({
+    settings: {
+      ollamaEnabled: false,
+      ollamaModel: "llama3.2",
+    },
+  }),
+}));
+
 let mockHistory: OutputLine[] = [];
 let mockWorldState: WorldState | null = null;
 let mockIsReady = false;

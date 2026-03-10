@@ -23,6 +23,7 @@ Decision: keep for now as archive history.
 Why:
 
 - It is not a true ancestor of `master`.
+- Endpoint comparison suggests the branch is broadly superseded by the shipped release line, but not through clean ancestry.
 - It still shows a wide diff against `master`, including the module-hardening commit history.
 - Some of its work was promoted through later branches and release promotion steps rather than a clean merge lineage.
 
@@ -38,6 +39,7 @@ Decision: keep for now as archive history.
 Why:
 
 - It is not a true ancestor of `master`.
+- Endpoint comparison suggests it is broadly superseded by the shipped release line, but not through clean ancestry.
 - Its remaining diff is broad and overlaps with work that was later folded into the shipped release line through different commits.
 - Its PR was closed as superseded, but the branch still serves as historical context for earlier repo bootstrap work.
 

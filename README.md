@@ -1,8 +1,24 @@
 # LoreKeeper
 
-**A text adventure game where an AI narrator tells your story.**
+**A desktop-first narrative dungeon crawler where every command becomes a story.**
 
-You explore the dungeon. Rust owns the world state. An LLM writes the prose. No LLM? No problem — template narration kicks in so the game always works.
+LoreKeeper blends a traditional text adventure with a modern local-first stack: Rust keeps the world state honest, React/Tauri make it feel like a real desktop game, and an optional local LLM turns your actions into living prose. If no model is available, the game still works with strong template narration, so the experience never collapses into a broken demo.
+
+## Why Try LoreKeeper?
+
+- Play a handcrafted dark-fantasy adventure with room for experimentation, secrets, and multiple endings.
+- Get the feel of AI-assisted storytelling without making the whole game depend on cloud services or flaky prompts.
+- Explore a project that is already beyond prototype stage: playable, test-covered, internally release-ready on macOS, and built with a real engine and tooling story behind it.
+- Tinker with modules, themes, stats, replays, and map editing if you want more than a single playthrough.
+
+## Current Stage
+
+LoreKeeper is currently **internal release-ready on macOS** and actively maintained.
+
+- The core game loop, save/load flow, replay/stats surfaces, theme support, and module tooling are implemented.
+- The app is playable with or without Ollama.
+- Internal release docs, verification flows, and low-disk dev workflows are already in place.
+- Linux desktop dependency follow-up work exists, but it does not block the current macOS release line.
 
 ## The Game: _The Depths of Thornhold_
 
@@ -20,6 +36,13 @@ power. Will you claim it, destroy it, or strike a deal with its keeper?
 - Replay system with ghost playthrough comparison
 - Visual map editor for creating your own adventure modules
 
+## What Makes It Different
+
+- **Story with structure**: the narration can be dynamic, but the game rules, world state, quests, combat, and progression live in a real engine.
+- **Local-first by design**: Ollama support is optional, local-only, and backed by a template fallback so the game stays reliable.
+- **Built to keep growing**: custom modules, themes, replay comparison, and map editing make it more than a one-off experiment.
+- **Developer-friendly**: the repo already supports lean-dev mode, deterministic verification, cleanup commands, and an internal release workflow.
+
 ## Tech Stack
 
 | Layer       | Tech                                                             |
@@ -32,6 +55,8 @@ power. Will you claim it, destroy it, or strike a deal with its keeper?
 
 ## Quick Start
 
+If you want to try the game locally as a developer:
+
 ```bash
 # Prerequisites: Rust, Node.js, and optionally Ollama
 
@@ -42,9 +67,15 @@ npm run tauri dev
 ollama pull llama3.2
 ```
 
+What to expect:
+
+- `npm run tauri dev` launches the full desktop app.
+- If Ollama is not installed, LoreKeeper still runs with template narration.
+- For a lower-disk day-to-day workflow, use `npm run dev:lean`.
+
 ## Internal Release
 
-For the macOS internal release workflow, artifact contract, Gatekeeper notes, tester charter, and rollback reference, use:
+For the macOS internal release workflow, artifact contract, tester guidance, release handoff, and rollback reference, use:
 
 - `docs/internal-release-handoff.md`
 - `docs/internal-release-macos.md`

@@ -49,6 +49,7 @@ For the macOS internal release workflow, artifact contract, Gatekeeper notes, te
 - `docs/internal-release-handoff.md`
 - `docs/internal-release-macos.md`
 - `docs/internal-release-checklist.md`
+- `docs/internal-release-team-update.md`
 
 ## Dev Modes
 

@@ -55,6 +55,12 @@ In plain language: this is not a quick Cargo update. It is an upstream stack iss
 3. Run Rust verification and `cargo audit` after any dependency shift.
 4. Decide whether Linux should remain deferred or move into active release scope.
 
+Use this repo-owned diagnosis command before any future remediation attempt:
+
+```bash
+npm run diagnose:linux-stack
+```
+
 ## Decision rule
 
 - If the stack still requires `glib ^0.18`, keep this as a documented upstream-bound follow-up.
@@ -67,3 +73,5 @@ In plain language: this is not a quick Cargo update. It is an upstream stack iss
   - `docs.rs/crate/wry/latest/source/Cargo.toml`
   - `docs.rs/crate/tauri-runtime-wry/latest/source/Cargo.toml`
   - `docs.rs/crate/gtk/latest/source/Cargo.toml`
+- Execution-ready spike checklist:
+  - `docs/linux-gtk-remediation-spike.md`

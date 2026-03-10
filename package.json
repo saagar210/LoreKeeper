@@ -17,6 +17,7 @@
     "test:e2e": "./node_modules/.bin/playwright test --config e2e/playwright.config.ts",
     "lint:rust": "scripts/rust/lint.sh",
     "test:rust": "scripts/rust/test.sh",
+    "diagnose:linux-stack": "bash scripts/rust/trace-linux-gui-stack.sh",
     "verify:frontend": "npm run typecheck && npm run test:frontend && npm run build:frontend",
     "verify:full": "npm run verify:frontend && npm run lint:rust && npm run test:rust",
     "version:check": "node scripts/release/version-check.mjs",

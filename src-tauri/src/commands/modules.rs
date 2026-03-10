@@ -5,6 +5,23 @@ use crate::models::module::ModuleInfo;
 use crate::models::{CommandResponse, LineType, OutputLine, WorldState};
 use crate::persistence::state::GameState;
 
+fn validate_module_id(module_id: &str) -> Result<(), String> {
+    let trimmed = module_id.trim();
+    if trimmed.is_empty() {
+        return Err("Module id cannot be empty.".into());
+    }
+    if trimmed.starts_with('.') {
+        return Err("Module id cannot start with '.'.".into());
+    }
+    if trimmed.contains('/') || trimmed.contains('\\') || trimmed.contains(':') {
+        return Err("Module id must be a file name, not a path.".into());
+    }
+    if !trimmed.ends_with(".json") {
+        return Err("Module id must end with '.json'.".into());
+    }
+    Ok(())
+}
+
 #[tauri::command]
 pub fn list_modules(app: tauri::AppHandle) -> Result<Vec<ModuleInfo>, String> {
     let app_data_dir = app
@@ -26,6 +43,9 @@ pub fn list_modules(app: tauri::AppHandle) -> Result<Vec<ModuleInfo>, String> {
         if path.extension().is_some_and(|ext| ext == "json") {
             if let Ok(content) = std::fs::read_to_string(&path) {
                 if let Ok(state) = serde_json::from_str::<WorldState>(&content) {
+                    let Some(module_id) = path.file_name().map(|s| s.to_string_lossy().to_string()) else {
+                        continue;
+                    };
                     let name = path
                         .file_stem()
                         .map(|s| s.to_string_lossy().to_string())
@@ -37,7 +57,7 @@ pub fn list_modules(app: tauri::AppHandle) -> Result<Vec<ModuleInfo>, String> {
                             state.locations.len(),
                             state.items.len()
                         ),
-                        path: path.to_string_lossy().to_string(),
+                        module_id,
                         location_count: state.locations.len(),
                         item_count: state.items.len(),
                     });
@@ -51,10 +71,12 @@ pub fn list_modules(app: tauri::AppHandle) -> Result<Vec<ModuleInfo>, String> {
 
 #[tauri::command]
 pub fn load_module(
-    path: String,
+    module_id: String,
     app: tauri::AppHandle,
     game_state: State<GameState>,
 ) -> Result<CommandResponse, String> {
+    validate_module_id(&module_id)?;
+
     // Validate that the path is within the app's modules directory
     let app_data_dir = app
         .path()
@@ -69,9 +91,10 @@ pub fn load_module(
     let canonical_modules_dir = modules_dir
         .canonicalize()
         .map_err(|e| format!("Failed to resolve modules dir: {}", e))?;
-    let requested = std::path::Path::new(&path)
+    let requested = modules_dir
+        .join(&module_id)
         .canonicalize()
-        .map_err(|e| format!("Invalid path: {}", e))?;
+        .map_err(|e| format!("Invalid module id: {}", e))?;
     if !requested.starts_with(&canonical_modules_dir) {
         return Err("Module path must be within the modules directory.".into());
     }
@@ -116,4 +139,27 @@ pub fn load_module(
         world_state: state.clone(),
         sound_cues: vec![],
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::validate_module_id;
+
+    #[test]
+    fn accepts_json_file_name() {
+        assert!(validate_module_id("thornhold.json").is_ok());
+    }
+
+    #[test]
+    fn rejects_path_traversal_like_values() {
+        assert!(validate_module_id("../thornhold.json").is_err());
+        assert!(validate_module_id("mods/thornhold.json").is_err());
+        assert!(validate_module_id("mods\\thornhold.json").is_err());
+    }
+
+    #[test]
+    fn rejects_non_json_module_ids() {
+        assert!(validate_module_id("thornhold").is_err());
+        assert!(validate_module_id(".hidden.json").is_err());
+    }
 }

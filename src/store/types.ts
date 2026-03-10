@@ -276,7 +276,7 @@ export interface CustomThemeInfo {
 export interface ModuleInfo {
   name: string;
   description: string;
-  path: string;
+  moduleId: string;
   locationCount: number;
   itemCount: number;
 }

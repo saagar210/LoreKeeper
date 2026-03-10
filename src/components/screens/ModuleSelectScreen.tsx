@@ -39,12 +39,12 @@ export function ModuleSelectScreen({ onModuleLoaded, onClose }: Props) {
 
   const [loadingModule, setLoadingModule] = useState(false);
 
-  const handleLoad = async (path: string) => {
+  const handleLoad = async (moduleId: string) => {
     if (loadingModule) return;
     setError(null);
     setLoadingModule(true);
     try {
-      const response = await invoke<CommandResponse>(TAURI_COMMANDS.loadModule, { path });
+      const response = await invoke<CommandResponse>(TAURI_COMMANDS.loadModule, { moduleId });
       onModuleLoaded(response);
     } catch (err) {
       setError(`Failed to load module: ${err}`);
@@ -101,7 +101,7 @@ export function ModuleSelectScreen({ onModuleLoaded, onClose }: Props) {
           <div className="space-y-3 max-h-80 overflow-y-auto">
             {modules.map((mod_) => (
               <div
-                key={mod_.path}
+                key={mod_.moduleId}
                 className="flex items-center justify-between border border-[var(--border)] p-3"
               >
                 <div>
@@ -113,7 +113,7 @@ export function ModuleSelectScreen({ onModuleLoaded, onClose }: Props) {
                   </p>
                 </div>
                 <button
-                  onClick={() => handleLoad(mod_.path)}
+                  onClick={() => handleLoad(mod_.moduleId)}
                   disabled={loadingModule}
                   className="border border-[var(--border)] px-3 py-1 text-xs text-[var(--accent)] hover:border-[var(--accent)] disabled:opacity-30"
                 >

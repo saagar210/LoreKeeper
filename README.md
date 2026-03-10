@@ -87,23 +87,34 @@ Both cleanup commands also clear the default Rust verification cache at
 
 ## Engineering Verification Workflow
 
-Use this canonical command for deterministic local verification:
+Use the command below depending on the level of confidence you need:
 
 ```bash
-bash .codex/scripts/run_verify_commands.sh
-```
-
-It executes `.codex/verify.commands` in order and is the source of truth for local gate runs.
-
-Additional scoped verification commands:
-
-```bash
-# Frontend-only verification (works without Linux GTK/GLib system libs)
+# Local-fast frontend check (no Rust/Tauri system packages required)
 npm run verify:frontend
 
-# Full parity verification (matches CI intent)
+# Full app correctness gate used by the main CI workflow
 npm run verify:full
+
+# Canonical local gate runner for deterministic script order
+bash .codex/scripts/run_verify_commands.sh
+
+# Browser-level user flow coverage
+npm run test:e2e
 ```
+
+What each command means:
+
+- `npm run verify:frontend`: fastest everyday check for TypeScript, Vitest, and frontend build health.
+- `npm run verify:full`: the repo's main correctness gate; it runs frontend verification plus Rust lint and Rust tests.
+- `bash .codex/scripts/run_verify_commands.sh`: the canonical deterministic local runner for `.codex/verify.commands`, including git hygiene and the non-Lighthouse perf checks.
+- `npm run test:e2e`: Playwright coverage for browser-level flows using the existing `e2e` config.
+
+CI mapping:
+
+- `.github/workflows/ci.yml` runs `npm run verify:full`.
+- `.github/workflows/e2e.yml` runs `npm run test:e2e` on pull requests.
+- Performance checks stay in the dedicated perf workflows rather than the main correctness gate.
 
 Granular commands:
 
@@ -189,19 +200,20 @@ Recommended actions:
 - Module loading avoids exposing absolute filesystem paths to the frontend; the UI works with safe module IDs and the backend resolves them inside the app-owned `modules/` directory.
 - Module export follows the same rule: the editor gets back a safe module ID rather than a machine-specific path.
 - Ollama integration is local-only by design. Settings now accept `http://localhost` and loopback IPs only, which keeps narration traffic on the same machine.
+- Custom themes are validated on save and sanitized again before live CSS is applied, so malformed or unexpected theme payloads are ignored instead of mutating arbitrary styles.
 - Custom module ingestion now enforces file-size and structural guardrails before a module can be listed, validated, exported, or loaded into live game state.
 
-## Project Stats
+## Quality Snapshot
 
-```
-Rust source     54 files    ~10,700 lines
-Frontend        42 files    TypeScript strict, 0 errors
-Rust tests      175 passing
-Frontend tests  189 passing (Vitest)
-E2E tests       20 scenarios (Playwright)
-Clippy          0 warnings
-Bundle          267 KB JS + 18 KB CSS
-```
+This repository keeps quality status tied to runnable commands instead of hard-coded counts that drift over time.
+
+- Frontend health: `npm run verify:frontend`
+- Full app correctness gate: `npm run verify:full`
+- Canonical deterministic local gate runner: `bash .codex/scripts/run_verify_commands.sh`
+- Browser-level user flows: `npm run test:e2e`
+- Performance budgets and reports: `npm run perf:*` plus the dedicated perf GitHub Actions workflows
+
+For the current state of the branch, run the commands above instead of relying on a static stats block.
 
 ## Architecture
 

@@ -9,6 +9,27 @@ export class GamePage {
       if (globalAny.__LOREKEEPER_TAURI_MOCK__) return;
 
       const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
+      const normalizeLabel = (
+        value: unknown,
+        fieldName: string,
+        maxLen: number,
+      ) => {
+        const trimmed = String(value ?? "").trim();
+        if (!trimmed) {
+          throw new Error(`${fieldName} cannot be empty.`);
+        }
+        if (trimmed.length > maxLen) {
+          throw new Error(
+            `${fieldName} must be ${maxLen} characters or fewer.`,
+          );
+        }
+        if (!/^[A-Za-z0-9 _-]+$/.test(trimmed)) {
+          throw new Error(
+            `${fieldName} can only use letters, numbers, spaces, '-' and '_'.`,
+          );
+        }
+        return trimmed;
+      };
 
       const makeWorldState = () => ({
         player: {
@@ -101,7 +122,10 @@ export class GamePage {
           soundVolume: number;
           difficulty: "easy" | "normal" | "hard";
         };
-        saves: Record<string, { worldState: ReturnType<typeof makeWorldState>; savedAt: string }>;
+        saves: Record<
+          string,
+          { worldState: ReturnType<typeof makeWorldState>; savedAt: string }
+        >;
         stats: Record<string, number>;
       } = {
         worldState: makeWorldState(),
@@ -150,9 +174,13 @@ export class GamePage {
             case "initialize_game":
             case "new_game":
               state.worldState = makeWorldState();
-              return response("You descend into The Depths of Thornhold. Courtyard.");
+              return response(
+                "You descend into The Depths of Thornhold. Courtyard.",
+              );
             case "process_command": {
-              const input = String(args.input ?? "").trim().toLowerCase();
+              const input = String(args.input ?? "")
+                .trim()
+                .toLowerCase();
               state.worldState.player.turnsElapsed += 1;
               state.stats.commandsEntered += 1;
               if (input === "look") {
@@ -162,13 +190,21 @@ export class GamePage {
               }
               if (input === "inventory") {
                 const inv = state.worldState.player.inventory;
-                return response(inv.length ? `Inventory: ${inv.join(", ")}` : "Inventory is empty.");
+                return response(
+                  inv.length
+                    ? `Inventory: ${inv.join(", ")}`
+                    : "Inventory is empty.",
+                );
               }
               if (input === "help") {
-                return response("Try: look, go east, go west, take rusty_lantern.");
+                return response(
+                  "Try: look, go east, go west, take rusty_lantern.",
+                );
               }
               if (input === "take rusty_lantern") {
-                if (!state.worldState.player.inventory.includes("rusty_lantern")) {
+                if (
+                  !state.worldState.player.inventory.includes("rusty_lantern")
+                ) {
                   state.worldState.player.inventory.push("rusty_lantern");
                 }
                 state.worldState.locations.courtyard.items = [];
@@ -176,26 +212,46 @@ export class GamePage {
               }
               if (input === "go east") {
                 state.worldState.player.location = "great_hall";
-                if (!state.worldState.player.visitedLocations.includes("great_hall")) {
+                if (
+                  !state.worldState.player.visitedLocations.includes(
+                    "great_hall",
+                  )
+                ) {
                   state.worldState.player.visitedLocations.push("great_hall");
                 }
-                state.stats.roomsExplored = Math.max(state.stats.roomsExplored, 2);
+                state.stats.roomsExplored = Math.max(
+                  state.stats.roomsExplored,
+                  2,
+                );
                 return response("You enter the Great Hall.");
               }
               if (input === "go west") {
                 state.worldState.player.location = "courtyard";
                 return response("You return to the Courtyard.");
               }
-              return response("The command echoes in the dark, but nothing happens.");
+              return response(
+                "The command echoes in the dark, but nothing happens.",
+              );
             }
             case "save_game": {
-              const slotName = String(args.slotName ?? "quicksave");
+              const slotName = normalizeLabel(
+                args.slotName ?? "quicksave",
+                "Save name",
+                32,
+              );
               const savedAt = new Date().toISOString();
-              state.saves[slotName] = { worldState: clone(state.worldState), savedAt };
+              state.saves[slotName] = {
+                worldState: clone(state.worldState),
+                savedAt,
+              };
               return { slotName, savedAt };
             }
             case "load_game": {
-              const slotName = String(args.slotName ?? "");
+              const slotName = normalizeLabel(
+                args.slotName ?? "",
+                "Save name",
+                32,
+              );
               const saved = state.saves[slotName];
               if (!saved) throw new Error("Save not found");
               state.worldState = clone(saved.worldState);
@@ -205,14 +261,19 @@ export class GamePage {
               return Object.entries(state.saves).map(([slotName, entry]) => ({
                 slotName,
                 playerLocation:
-                  entry.worldState.locations[entry.worldState.player.location]?.name ?? null,
+                  entry.worldState.locations[entry.worldState.player.location]
+                    ?.name ?? null,
                 playerHealth: entry.worldState.player.health,
                 turnsElapsed: entry.worldState.player.turnsElapsed,
                 questsCompleted: 0,
                 savedAt: entry.savedAt,
               }));
             case "delete_save": {
-              const slotName = String(args.slotName ?? "");
+              const slotName = normalizeLabel(
+                args.slotName ?? "",
+                "Save name",
+                32,
+              );
               delete state.saves[slotName];
               return null;
             }
@@ -223,7 +284,7 @@ export class GamePage {
                 ...state.settings,
                 ...(args.settings as Record<string, unknown>),
               };
-              return null;
+              return clone(state.settings);
             case "get_ollama_status":
               return { connected: false, version: null };
             case "get_available_models":

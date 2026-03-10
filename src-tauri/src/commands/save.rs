@@ -3,6 +3,7 @@ use tauri::State;
 use crate::models::CommandResponse;
 use crate::persistence::save_load::{self, SaveSlotInfo};
 use crate::persistence::state::{DbState, GameState};
+use crate::persistence::validators::validate_save_slot_name;
 
 #[tauri::command]
 pub fn save_game(
@@ -10,6 +11,7 @@ pub fn save_game(
     game_state: State<GameState>,
     db_state: State<DbState>,
 ) -> Result<(), String> {
+    let slot_name = validate_save_slot_name(&slot_name)?;
     let state = game_state.0.lock().map_err(|e| e.to_string())?;
     let db = db_state.0.lock().map_err(|e| e.to_string())?;
     save_load::save_game(&db, &slot_name, &state)
@@ -21,6 +23,7 @@ pub fn load_game(
     game_state: State<GameState>,
     db_state: State<DbState>,
 ) -> Result<CommandResponse, String> {
+    let slot_name = validate_save_slot_name(&slot_name)?;
     let mut state = game_state.0.lock().map_err(|e| e.to_string())?;
     let db = db_state.0.lock().map_err(|e| e.to_string())?;
     let loaded = save_load::load_game(&db, &slot_name)?;
@@ -38,10 +41,14 @@ pub fn load_game(
             &state.npcs,
             false,
         );
-        messages.extend(look_lines.into_iter().map(|text| crate::models::OutputLine {
-            text,
-            line_type: crate::models::LineType::Narration,
-        }));
+        messages.extend(
+            look_lines
+                .into_iter()
+                .map(|text| crate::models::OutputLine {
+                    text,
+                    line_type: crate::models::LineType::Narration,
+                }),
+        );
     }
 
     Ok(CommandResponse {
@@ -59,6 +66,7 @@ pub fn list_saves(db_state: State<DbState>) -> Result<Vec<SaveSlotInfo>, String>
 
 #[tauri::command]
 pub fn delete_save(slot_name: String, db_state: State<DbState>) -> Result<(), String> {
+    let slot_name = validate_save_slot_name(&slot_name)?;
     let db = db_state.0.lock().map_err(|e| e.to_string())?;
     save_load::delete_save(&db, &slot_name)
 }

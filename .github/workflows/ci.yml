@@ -9,7 +9,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  check:
+  verify-full:
     runs-on: ubuntu-latest
 
     steps:
@@ -39,17 +39,5 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
-      - name: TypeScript check
-        run: npx tsc --noEmit
-
-      - name: Frontend tests
-        run: npx vitest run
-
-      - name: Clippy
-        run: cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
-
-      - name: Rust tests
-        run: cargo test --manifest-path src-tauri/Cargo.toml
-
-      - name: Vite build
-        run: npx vite build
+      - name: Run full verification
+        run: npm run verify:full

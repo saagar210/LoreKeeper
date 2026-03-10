@@ -2,13 +2,18 @@ import { invoke } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { trapFocus } from "../../lib/focusTrap";
 import { formatRelativeTime } from "../../lib/format";
+import { normalizeSaveSlotNameInput } from "../../lib/inputValidation";
 import { TAURI_COMMANDS } from "../../lib/tauriCommands";
 import type { SaveSlotInfo } from "../../store/types";
 
+export type SaveLoadActionResult =
+  | { ok: true; slotName: string }
+  | { ok: false; message: string };
+
 interface Props {
   mode: "save" | "load";
-  onSave?: (slot: string) => void;
-  onLoad?: (slot: string) => void;
+  onSave?: (slot: string) => Promise<SaveLoadActionResult>;
+  onLoad?: (slot: string) => Promise<SaveLoadActionResult>;
   onClose: () => void;
 }
 
@@ -16,6 +21,7 @@ export function SaveLoadScreen({ mode, onSave, onLoad, onClose }: Props) {
   const [saves, setSaves] = useState<SaveSlotInfo[]>([]);
   const [newSlotName, setNewSlotName] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -37,14 +43,46 @@ export function SaveLoadScreen({ mode, onSave, onLoad, onClose }: Props) {
     refreshSaves();
   }, [refreshSaves]);
 
-  const handleSave = (slot: string) => {
-    onSave?.(slot);
-    onClose();
+  const handleSave = async (slotInput: string) => {
+    const result = normalizeSaveSlotNameInput(slotInput);
+    if (!result.ok) {
+      setMessage(result.message);
+      return;
+    }
+
+    const outcome = await onSave?.(result.value);
+    if (!outcome) {
+      onClose();
+      return;
+    }
+    if (outcome.ok) {
+      setMessage(null);
+      onClose();
+      return;
+    }
+
+    setMessage(outcome.message);
   };
 
-  const handleLoad = (slot: string) => {
-    onLoad?.(slot);
-    onClose();
+  const handleLoad = async (slotInput: string) => {
+    const result = normalizeSaveSlotNameInput(slotInput);
+    if (!result.ok) {
+      setMessage(result.message);
+      return;
+    }
+
+    const outcome = await onLoad?.(result.value);
+    if (!outcome) {
+      onClose();
+      return;
+    }
+    if (outcome.ok) {
+      setMessage(null);
+      onClose();
+      return;
+    }
+
+    setMessage(outcome.message);
   };
 
   const handleDelete = async (slot: string) => {
@@ -55,9 +93,12 @@ export function SaveLoadScreen({ mode, onSave, onLoad, onClose }: Props) {
     setConfirmDelete(null);
     try {
       await invoke(TAURI_COMMANDS.deleteSave, { slotName: slot });
-      refreshSaves();
+      setMessage(`Deleted '${slot}'.`);
+      await refreshSaves();
     } catch (err) {
-      console.error("Delete failed:", err);
+      setMessage(
+        err instanceof Error ? err.message : `Delete failed: ${String(err)}`,
+      );
     }
   };
 
@@ -71,9 +112,15 @@ export function SaveLoadScreen({ mode, onSave, onLoad, onClose }: Props) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div ref={dialogRef} className="w-96 bg-[var(--panel-bg)] border border-[var(--border)] p-6">
+      <div
+        ref={dialogRef}
+        className="w-96 bg-[var(--panel-bg)] border border-[var(--border)] p-6"
+      >
         <div className="flex items-center justify-between mb-4">
-          <h2 id="saveload-heading" className="text-lg font-bold text-[var(--accent)]">
+          <h2
+            id="saveload-heading"
+            className="text-lg font-bold text-[var(--accent)]"
+          >
             {mode === "save" ? "Save Game" : "Load Game"}
           </h2>
           <button
@@ -83,6 +130,10 @@ export function SaveLoadScreen({ mode, onSave, onLoad, onClose }: Props) {
             [X]
           </button>
         </div>
+
+        {message && (
+          <p className="mb-3 text-xs text-[var(--system)]">{message}</p>
+        )}
 
         {mode === "save" && (
           <div className="flex gap-2 mb-4">
@@ -94,12 +145,12 @@ export function SaveLoadScreen({ mode, onSave, onLoad, onClose }: Props) {
               className="flex-1 bg-transparent border border-[var(--border)] px-2 py-1 text-sm text-[var(--text)] outline-none"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && newSlotName.trim()) {
-                  handleSave(newSlotName.trim());
+                  void handleSave(newSlotName);
                 }
               }}
             />
             <button
-              onClick={() => newSlotName.trim() && handleSave(newSlotName.trim())}
+              onClick={() => newSlotName.trim() && void handleSave(newSlotName)}
               className="border border-[var(--accent)] px-3 py-1 text-sm text-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--bg)]"
             >
               Save
@@ -118,19 +169,24 @@ export function SaveLoadScreen({ mode, onSave, onLoad, onClose }: Props) {
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-[var(--text)] font-bold">{save.slotName}</span>
-                    <span className="text-[var(--text-dim)] ml-2 shrink-0">{formatRelativeTime(save.savedAt)}</span>
+                    <span className="text-[var(--text)] font-bold">
+                      {save.slotName}
+                    </span>
+                    <span className="text-[var(--text-dim)] ml-2 shrink-0">
+                      {formatRelativeTime(save.savedAt)}
+                    </span>
                   </div>
                   <div className="text-[var(--text-dim)]">
-                    {save.playerLocation} | HP: {save.playerHealth} | Turns: {save.turnsElapsed} | Quests: {save.questsCompleted ?? 0}
+                    {save.playerLocation} | HP: {save.playerHealth} | Turns:{" "}
+                    {save.turnsElapsed} | Quests: {save.questsCompleted ?? 0}
                   </div>
                 </div>
                 <div className="flex gap-2">
                   <button
                     onClick={() =>
                       mode === "save"
-                        ? handleSave(save.slotName)
-                        : handleLoad(save.slotName)
+                        ? void handleSave(save.slotName)
+                        : void handleLoad(save.slotName)
                     }
                     className="text-[var(--accent)] hover:underline"
                   >

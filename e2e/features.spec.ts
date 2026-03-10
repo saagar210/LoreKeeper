@@ -27,7 +27,9 @@ test.describe("Integration Flows", () => {
     });
 
     // Wait for save confirmation
-    await expect(page.locator("text=Game saved.")).toBeVisible({ timeout: 3000 });
+    await expect(page.locator("text=Game saved.")).toBeVisible({
+      timeout: 3000,
+    });
 
     // Execute more commands to change state
     await game.typeCommand("go east");
@@ -38,14 +40,16 @@ test.describe("Integration Flows", () => {
     await game.loadGameButton.click();
 
     // Load from quicksave row
-    const quicksaveRow = page.locator("div", { hasText: /quicksave/i })
+    const quicksaveRow = page
+      .locator("div", { hasText: /quicksave/i })
       .filter({ has: page.getByRole("button", { name: "Load" }) })
       .first();
     await expect(quicksaveRow).toBeVisible({ timeout: 3000 });
     await quicksaveRow.getByRole("button", { name: "Load" }).click();
 
     // Verify loaded state in sidebar location
-    const locationHeading = page.getByRole("complementary", { name: "Game information" })
+    const locationHeading = page
+      .getByRole("complementary", { name: "Game information" })
       .getByRole("heading", { level: 3 })
       .first();
     await expect(locationHeading).toHaveText("Courtyard", { timeout: 3000 });
@@ -86,7 +90,10 @@ test.describe("Integration Flows", () => {
           // This might be shown in game output or as a separate notification
           break;
         }
-        if (currentOutput?.includes("You are dead") || currentOutput?.includes("death")) {
+        if (
+          currentOutput?.includes("You are dead") ||
+          currentOutput?.includes("death")
+        ) {
           break;
         }
         await game.typeCommand("attack zombie");
@@ -110,7 +117,9 @@ test.describe("Integration Flows", () => {
       await page.waitForTimeout(500);
 
       // Verify command echo appears in output
-      await expect(game.gameOutput).toContainText(`> ${cmd}`, { timeout: 2000 });
+      await expect(game.gameOutput).toContainText(`> ${cmd}`, {
+        timeout: 2000,
+      });
     }
   });
 
@@ -144,7 +153,9 @@ test.describe("Integration Flows", () => {
     }
   });
 
-  test("Keyboard navigation works (Escape closes overlays)", async ({ page }) => {
+  test("Keyboard navigation works (Escape closes overlays)", async ({
+    page,
+  }) => {
     const game = new GamePage(page);
     await game.goto();
 
@@ -206,6 +217,27 @@ test.describe("Integration Flows", () => {
     expect(output).toBeTruthy();
     expect(output?.length).toBeGreaterThan(0);
   });
+
+  test("Save dialog rejects invalid save names", async ({ page }) => {
+    const game = new GamePage(page);
+    await game.goto();
+    await game.newGameButton.click();
+    await expect(game.commandInput).toBeVisible({ timeout: 5000 });
+
+    await page.keyboard.press("Escape");
+    await game.page.getByRole("button", { name: "Save Game" }).click();
+    await expect(page.getByRole("dialog", { name: "Save Game" })).toBeVisible();
+
+    await page.getByPlaceholder("Save name...").fill("bad/save");
+    await page.getByRole("button", { name: "Save" }).click();
+
+    await expect(
+      page.getByText(
+        "Save name can only use letters, numbers, spaces, '-' and '_'.",
+      ),
+    ).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Save Game" })).toBeVisible();
+  });
 });
 
 test.describe("UI Components", () => {
@@ -218,7 +250,8 @@ test.describe("UI Components", () => {
 
     // Look for sidebar or stats panel (might be desktop only)
     const sidebar = page.locator('aside, [role="complementary"], .sidebar');
-    const isMobile = page.viewportSize()?.width && page.viewportSize()!.width < 768;
+    const isMobile =
+      page.viewportSize()?.width && page.viewportSize()!.width < 768;
 
     if (!isMobile) {
       // On desktop, sidebar should be visible
@@ -239,23 +272,25 @@ test.describe("UI Components", () => {
     await expect(dialog).toBeVisible();
 
     // Look for theme selector
-    const themeSelect = page.locator('select[name="theme"], button:has-text("Theme")');
+    const themeSelect = page.locator(
+      'select[name="theme"], button:has-text("Theme")',
+    );
     if (await themeSelect.first().isVisible()) {
       // Get current background color
       const body = page.locator("body");
-      const initialBg = await body.evaluate((el) =>
-        window.getComputedStyle(el).backgroundColor,
+      const initialBg = await body.evaluate(
+        (el) => window.getComputedStyle(el).backgroundColor,
       );
 
       // Change theme (if we can find theme controls)
-      const themeButtons = page.locator('button[data-theme]');
+      const themeButtons = page.locator("button[data-theme]");
       if ((await themeButtons.count()) > 0) {
         await themeButtons.first().click();
         await page.waitForTimeout(300);
 
         // Verify background changed
-        const newBg = await body.evaluate((el) =>
-          window.getComputedStyle(el).backgroundColor,
+        const newBg = await body.evaluate(
+          (el) => window.getComputedStyle(el).backgroundColor,
         );
 
         // Background should potentially change (may not if already on that theme)
@@ -294,12 +329,16 @@ test.describe("Mobile Responsive", () => {
     await expect(game.commandInput).toBeVisible({ timeout: 5000 });
 
     // Look for sidebar toggle button
-    const toggleButton = page.locator('button:has-text("info"), button.sidebar-toggle');
+    const toggleButton = page.locator(
+      'button:has-text("info"), button.sidebar-toggle',
+    );
     if (await toggleButton.isVisible()) {
       await toggleButton.click();
 
       // Sidebar drawer should appear
-      const drawer = page.locator('.sidebar-drawer, [role="dialog"]:has-text("Stats")');
+      const drawer = page.locator(
+        '.sidebar-drawer, [role="dialog"]:has-text("Stats")',
+      );
       await expect(drawer).toBeVisible({ timeout: 1000 });
 
       // Close drawer

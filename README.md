@@ -42,6 +42,12 @@ npm run tauri dev
 ollama pull llama3.2
 ```
 
+## Internal Release
+
+For the macOS internal release workflow, artifact contract, Gatekeeper notes, tester charter, and rollback reference, use:
+
+- `docs/internal-release-macos.md`
+
 ## Dev Modes
 
 ### Normal dev

@@ -1,0 +1,55 @@
+name: internal macOS release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-internal-macos:
+    runs-on: macos-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Verify internal release candidate
+        run: npm run verify:internal-release
+
+      - name: Build internal macOS artifact
+        run: npm run release:internal:mac
+
+      - name: Print release manifest
+        run: |
+          manifest="$(find release-artifacts/internal/macos -name release-manifest.json | head -n 1)"
+          if [ -z "$manifest" ]; then
+            echo "No release manifest found" >&2
+            exit 1
+          fi
+          echo "Release manifest: $manifest"
+          cat "$manifest"
+
+      - name: Upload internal macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lorekeeper-internal-macos
+          path: release-artifacts/internal/macos
+          if-no-files-found: error

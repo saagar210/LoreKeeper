@@ -101,6 +101,7 @@ pub fn normalize_ollama_url(raw: &str) -> Result<String, String> {
         .ok_or_else(|| "Ollama URL must include a host.".to_string())?;
     let is_loopback = host.eq_ignore_ascii_case("localhost")
         || host
+            .trim_matches(|c| c == '[' || c == ']')
             .parse::<IpAddr>()
             .map(|ip| ip.is_loopback())
             .unwrap_or(false);
@@ -109,8 +110,7 @@ pub fn normalize_ollama_url(raw: &str) -> Result<String, String> {
         return Err("Ollama URL must point to localhost or a loopback address.".into());
     }
 
-    parsed
-        .set_path("");
+    parsed.set_path("");
     Ok(parsed.to_string().trim_end_matches('/').to_string())
 }
 

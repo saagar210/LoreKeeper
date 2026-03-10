@@ -2,7 +2,7 @@ use tauri::{Manager, State};
 
 use crate::engine::module_loader;
 use crate::models::module::ModuleInfo;
-use crate::models::{CommandResponse, LineType, OutputLine, WorldState};
+use crate::models::{CommandResponse, LineType, OutputLine};
 use crate::persistence::state::GameState;
 
 fn validate_module_id(module_id: &str) -> Result<(), String> {
@@ -41,27 +41,26 @@ pub fn list_modules(app: tauri::AppHandle) -> Result<Vec<ModuleInfo>, String> {
     for entry in entries.flatten() {
         let path = entry.path();
         if path.extension().is_some_and(|ext| ext == "json") {
-            if let Ok(content) = std::fs::read_to_string(&path) {
-                if let Ok(state) = serde_json::from_str::<WorldState>(&content) {
-                    let Some(module_id) = path.file_name().map(|s| s.to_string_lossy().to_string()) else {
-                        continue;
-                    };
-                    let name = path
-                        .file_stem()
-                        .map(|s| s.to_string_lossy().to_string())
-                        .unwrap_or_default();
-                    modules.push(ModuleInfo {
-                        name,
-                        description: format!(
-                            "{} locations, {} items",
-                            state.locations.len(),
-                            state.items.len()
-                        ),
-                        module_id,
-                        location_count: state.locations.len(),
-                        item_count: state.items.len(),
-                    });
-                }
+            if let Ok(state) = module_loader::inspect_module(&path) {
+                let Some(module_id) = path.file_name().map(|s| s.to_string_lossy().to_string())
+                else {
+                    continue;
+                };
+                let name = path
+                    .file_stem()
+                    .map(|s| s.to_string_lossy().to_string())
+                    .unwrap_or_default();
+                modules.push(ModuleInfo {
+                    name,
+                    description: format!(
+                        "{} locations, {} items",
+                        state.locations.len(),
+                        state.items.len()
+                    ),
+                    module_id,
+                    location_count: state.locations.len(),
+                    item_count: state.items.len(),
+                });
             }
         }
     }
@@ -116,12 +115,8 @@ pub fn load_module(
                 line_type: LineType::System,
             },
         ];
-        let look_lines = crate::engine::templates::describe_location(
-            &location,
-            &state.items,
-            &state.npcs,
-            true,
-        );
+        let look_lines =
+            crate::engine::templates::describe_location(&location, &state.items, &state.npcs, true);
         msgs.extend(look_lines.into_iter().map(|text| OutputLine {
             text,
             line_type: LineType::Narration,

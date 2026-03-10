@@ -1,6 +1,6 @@
 use tauri::Manager;
 
-use crate::models::WorldState;
+use crate::{engine::module_loader, models::WorldState};
 
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -52,61 +52,25 @@ fn sanitize_module_name(name: &str) -> Result<String, String> {
 
 #[tauri::command]
 pub fn validate_module_json(json: String) -> Result<ValidationResult, String> {
-    let mut errors = Vec::new();
     let mut warnings = Vec::new();
 
-    let state: WorldState = match serde_json::from_str(&json) {
+    let state: WorldState = match module_loader::parse_module_json(&json) {
         Ok(s) => s,
         Err(e) => {
             return Ok(ValidationResult {
                 valid: false,
-                errors: vec![format!("Invalid JSON: {}", e)],
+                errors: vec![e],
                 warnings: vec![],
             });
         }
     };
 
-    // Must have at least one location
-    if state.locations.is_empty() {
-        errors.push("Module must have at least one location.".into());
-    }
-
-    // Player starting location must exist
-    if !state.locations.contains_key(&state.player.location) {
-        errors.push(format!(
-            "Starting location '{}' does not exist.",
-            state.player.location
-        ));
-    }
-
-    // Validate exits point to existing locations
-    for (loc_id, loc) in &state.locations {
-        for (dir, dest) in &loc.exits {
-            if !state.locations.contains_key(dest) {
-                errors.push(format!(
-                    "Location '{}' exit {:?} points to non-existent '{}'.",
-                    loc_id, dir, dest
-                ));
-            }
-        }
-        // Validate items exist
-        for item_id in &loc.items {
-            if !state.items.contains_key(item_id) {
-                errors.push(format!(
-                    "Location '{}' references non-existent item '{}'.",
-                    loc_id, item_id
-                ));
-            }
-        }
-        // Validate NPCs exist
-        for npc_id in &loc.npcs {
-            if !state.npcs.contains_key(npc_id) {
-                errors.push(format!(
-                    "Location '{}' references non-existent NPC '{}'.",
-                    loc_id, npc_id
-                ));
-            }
-        }
+    if let Err(error) = module_loader::validate_module_state(&state) {
+        return Ok(ValidationResult {
+            valid: false,
+            errors: vec![error],
+            warnings,
+        });
     }
 
     // Warnings for potential issues
@@ -118,8 +82,8 @@ pub fn validate_module_json(json: String) -> Result<ValidationResult, String> {
     }
 
     Ok(ValidationResult {
-        valid: errors.is_empty(),
-        errors,
+        valid: true,
+        errors: vec![],
         warnings,
     })
 }
@@ -151,6 +115,7 @@ pub fn export_module(
     // Pretty print JSON
     let parsed: serde_json::Value = serde_json::from_str(&json).map_err(|e| e.to_string())?;
     let pretty = serde_json::to_string_pretty(&parsed).map_err(|e| e.to_string())?;
+    module_loader::ensure_module_json_size(&pretty)?;
 
     std::fs::write(&filepath, pretty).map_err(|e| e.to_string())?;
 
@@ -179,7 +144,7 @@ mod tests {
     fn validate_invalid_json() {
         let result = validate_module_json("not json at all".into()).unwrap();
         assert!(!result.valid);
-        assert!(result.errors[0].contains("Invalid JSON"));
+        assert!(result.errors[0].contains("Invalid module JSON"));
     }
 
     #[test]
@@ -189,7 +154,7 @@ mod tests {
         let json = serde_json::to_string(&state).unwrap();
         let result = validate_module_json(json).unwrap();
         assert!(!result.valid);
-        assert!(result.errors.iter().any(|e| e.contains("does not exist")));
+        assert!(result.errors.iter().any(|e| e.contains("not found")));
     }
 
     #[test]
@@ -205,7 +170,7 @@ mod tests {
         assert!(result
             .errors
             .iter()
-            .any(|e| e.contains("non-existent") && e.contains("phantom_room")));
+            .any(|e| e.contains("doesn't exist") && e.contains("phantom_room")));
     }
 
     #[test]
@@ -220,7 +185,7 @@ mod tests {
         assert!(result
             .errors
             .iter()
-            .any(|e| e.contains("non-existent item") && e.contains("ghost_item")));
+            .any(|e| e.contains("doesn't exist") && e.contains("ghost_item")));
     }
 
     #[test]
@@ -235,7 +200,7 @@ mod tests {
         assert!(result
             .errors
             .iter()
-            .any(|e| e.contains("non-existent NPC") && e.contains("phantom_npc")));
+            .any(|e| e.contains("doesn't exist") && e.contains("phantom_npc")));
     }
 
     #[test]
@@ -299,5 +264,13 @@ mod tests {
     fn sanitize_module_name_rejects_empty_or_non_alnum_values() {
         assert!(sanitize_module_name("   ").is_err());
         assert!(sanitize_module_name("!!!").is_err());
+    }
+
+    #[test]
+    fn validate_rejects_oversized_module_json() {
+        let oversized = "x".repeat(module_loader::MAX_MODULE_FILE_BYTES + 1);
+        let result = validate_module_json(oversized).unwrap();
+        assert!(!result.valid);
+        assert!(result.errors.iter().any(|e| e.contains("size limit")));
     }
 }

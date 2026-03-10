@@ -189,6 +189,7 @@ Recommended actions:
 - Module loading avoids exposing absolute filesystem paths to the frontend; the UI works with safe module IDs and the backend resolves them inside the app-owned `modules/` directory.
 - Module export follows the same rule: the editor gets back a safe module ID rather than a machine-specific path.
 - Ollama integration is local-only by design. Settings now accept `http://localhost` and loopback IPs only, which keeps narration traffic on the same machine.
+- Custom module ingestion now enforces file-size and structural guardrails before a module can be listed, validated, exported, or loaded into live game state.
 
 ## Project Stats
 

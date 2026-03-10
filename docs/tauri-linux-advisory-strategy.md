@@ -16,6 +16,10 @@ This note captures the current follow-up strategy for the open Rust advisory aff
 - The advisory comes in through the Linux desktop GUI stack used by Tauri and Wry.
 - A direct lockfile-only bump is not currently available on this dependency line.
 - A dry-run attempt to force `glib 0.20.0` fails because the current GTK stack requires `glib ^0.18`.
+- Current official upstream package metadata still points to the same GTK3-era line:
+  - latest `wry` still declares Linux `gtk = "0.18"` and `webkit2gtk = "2.0.1"`
+  - latest `tauri-runtime-wry` still declares Linux `webkit2gtk = "2.0"`
+- RustSec still marks `glib >= 0.20.0` as the fixed line for `RUSTSEC-2024-0429`.
 
 In plain language: this is not a quick Cargo update. It is an upstream stack issue.
 
@@ -55,3 +59,11 @@ In plain language: this is not a quick Cargo update. It is an upstream stack iss
 
 - If the stack still requires `glib ^0.18`, keep this as a documented upstream-bound follow-up.
 - If a compatible stack path opens, promote this from strategy note to real remediation work.
+
+## Source notes
+
+- RustSec advisory: `RUSTSEC-2024-0429`
+- Official crate metadata reviewed:
+  - `docs.rs/crate/wry/latest/source/Cargo.toml`
+  - `docs.rs/crate/tauri-runtime-wry/latest/source/Cargo.toml`
+  - `docs.rs/crate/gtk/latest/source/Cargo.toml`

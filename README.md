@@ -20,6 +20,20 @@ LoreKeeper is currently **internal release-ready on macOS** and actively maintai
 - Internal release docs, verification flows, and low-disk dev workflows are already in place.
 - Linux desktop dependency follow-up work exists, but it does not block the current macOS release line.
 
+## Screenshots
+
+![LoreKeeper title screen](docs/images/readme/title-screen.png)
+
+Title screen and mode hub for the current build.
+
+![LoreKeeper gameplay screen](docs/images/readme/gameplay-screen.png)
+
+Live gameplay with terminal narration, command input, and the right-side game panels.
+
+![LoreKeeper map editor](docs/images/readme/map-editor-screen.png)
+
+Built-in map editor for custom adventures and module experimentation.
+
 ## The Game: _The Depths of Thornhold_
 
 ```

@@ -143,6 +143,7 @@ Do not block this internal release on:
 - The internal macOS build is unsigned, so Gatekeeper may prompt on first launch.
 - Internal release verification relies on the existing browser E2E harness plus local packaged-build smoke. There is no repo-owned fully automated GUI test harness for the packaged Tauri app yet.
 - Ollama remains optional and local-only by design. Internal release validation should not treat unavailable Ollama as a blocker if the fallback narration path works.
+- Tauri warns that the bundle identifier `com.lorekeeper.app` ends with `.app`. The current build still succeeds, but that identifier should be corrected before public distribution if we plan any data-path migration carefully.
 
 ## Reporting and Triage
 

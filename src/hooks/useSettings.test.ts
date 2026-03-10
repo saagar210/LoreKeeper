@@ -61,9 +61,17 @@ describe("useSettings", () => {
       expect(mockInvoke).toHaveBeenCalledWith("get_settings");
     });
 
-    mockInvoke.mockResolvedValueOnce(undefined); // update call
+    mockInvoke.mockResolvedValueOnce(
+      createSettings({ typewriterSpeed: 50 }),
+    ); // update call
     await act(async () => {
-      await result.current.updateSettings({ typewriterSpeed: 50 });
+      const updateResult = await result.current.updateSettings({
+        typewriterSpeed: 50,
+      });
+      expect(updateResult).toEqual({
+        ok: true,
+        settings: expect.objectContaining({ typewriterSpeed: 50 }),
+      });
     });
 
     expect(mockInvoke).toHaveBeenCalledWith("update_settings", {

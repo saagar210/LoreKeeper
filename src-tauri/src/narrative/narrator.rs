@@ -1,6 +1,7 @@
 use futures::StreamExt;
 
 use crate::models::*;
+use crate::models::normalize_ollama_url;
 use crate::narrative::context;
 use crate::narrative::ollama::OllamaClient;
 use crate::narrative::tone;
@@ -38,7 +39,15 @@ pub async fn narrate(
 
     let messages = context::build_narrative_messages(context, &settings_with_tone);
 
-    let client = OllamaClient::new(&settings.ollama_url);
+    let ollama_url = match normalize_ollama_url(&settings.ollama_url) {
+        Ok(url) => url,
+        Err(_) => {
+            let _ = sender.send(NarrativeEvent::Fallback).await;
+            return;
+        }
+    };
+
+    let client = OllamaClient::new(&ollama_url);
 
     match client
         .chat_stream(messages, &settings.ollama_model, settings.temperature)
@@ -108,7 +117,15 @@ pub async fn narrate_dialogue(
         dialogue_history,
     );
 
-    let client = OllamaClient::new(&settings.ollama_url);
+    let ollama_url = match normalize_ollama_url(&settings.ollama_url) {
+        Ok(url) => url,
+        Err(_) => {
+            let _ = sender.send(NarrativeEvent::Fallback).await;
+            return;
+        }
+    };
+
+    let client = OllamaClient::new(&ollama_url);
 
     match client
         .chat_stream(messages, &settings.ollama_model, settings.temperature)

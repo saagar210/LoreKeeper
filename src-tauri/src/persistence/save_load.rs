@@ -117,7 +117,9 @@ pub fn load_settings(conn: &Connection) -> Option<crate::models::GameSettings> {
         |row| row.get(0),
     );
     match result {
-        Ok(json) => serde_json::from_str(&json).ok(),
+        Ok(json) => serde_json::from_str(&json)
+            .ok()
+            .map(crate::models::GameSettings::sanitize_loaded),
         Err(_) => None,
     }
 }
@@ -192,5 +194,21 @@ mod tests {
         save_settings(&conn, &settings).unwrap();
         let loaded = load_settings(&conn).unwrap();
         assert_eq!(loaded.ollama_model, settings.ollama_model);
+    }
+
+    #[test]
+    fn load_settings_sanitizes_invalid_ollama_url() {
+        let conn = setup_db();
+        let settings = crate::models::GameSettings {
+            ollama_enabled: true,
+            ollama_url: "http://example.com:11434".into(),
+            ..crate::models::GameSettings::default()
+        };
+
+        save_settings(&conn, &settings).unwrap();
+        let loaded = load_settings(&conn).unwrap();
+
+        assert!(!loaded.ollama_enabled);
+        assert_eq!(loaded.ollama_url, "http://localhost:11434");
     }
 }

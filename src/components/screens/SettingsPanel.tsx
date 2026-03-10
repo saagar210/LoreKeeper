@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { trapFocus } from "../../lib/focusTrap";
 import { useSettings } from "../../hooks/useSettings";
 import type { Difficulty, ThemeName } from "../../store/types";
@@ -28,6 +28,8 @@ export function SettingsPanel({
   const { settings, updateSettings, ollamaStatus, checkOllama, models, getModels } =
     useSettings();
   const dialogRef = useRef<HTMLDivElement>(null);
+  const [ollamaUrlDraft, setOllamaUrlDraft] = useState(settings.ollamaUrl);
+  const [ollamaUrlError, setOllamaUrlError] = useState<string | null>(null);
 
   useEffect(() => {
     checkOllama();
@@ -44,6 +46,29 @@ export function SettingsPanel({
       getModels();
     }
   }, [ollamaStatus.connected, getModels]);
+
+  useEffect(() => {
+    setOllamaUrlDraft(settings.ollamaUrl);
+  }, [settings.ollamaUrl]);
+
+  const saveOllamaUrl = async () => {
+    const nextUrl = ollamaUrlDraft.trim();
+    if (!nextUrl || nextUrl === settings.ollamaUrl) {
+      setOllamaUrlDraft(settings.ollamaUrl);
+      setOllamaUrlError(null);
+      return;
+    }
+
+    const result = await updateSettings({ ollamaUrl: nextUrl });
+    if (result.ok) {
+      setOllamaUrlDraft(result.settings.ollamaUrl);
+      setOllamaUrlError(null);
+      return;
+    }
+
+    setOllamaUrlDraft(settings.ollamaUrl);
+    setOllamaUrlError(result.message);
+  };
 
   return (
     <div
@@ -281,12 +306,30 @@ export function SettingsPanel({
                     <label className="text-xs text-[var(--text-dim)] block mb-1">Ollama URL</label>
                     <input
                       type="text"
-                      value={settings.ollamaUrl}
-                      onChange={(e) =>
-                        updateSettings({ ollamaUrl: e.target.value })
-                      }
+                      value={ollamaUrlDraft}
+                      onChange={(e) => {
+                        setOllamaUrlDraft(e.target.value);
+                        setOllamaUrlError(null);
+                      }}
+                      onBlur={() => {
+                        void saveOllamaUrl();
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          void saveOllamaUrl();
+                        }
+                      }}
                       className="w-full bg-transparent border border-[var(--border)] px-2 py-1 text-xs text-[var(--text)] outline-none"
                     />
+                    <p className="mt-1 text-[11px] text-[var(--text-dim)]">
+                      Local only. Use <code>http://localhost:11434</code> or a loopback IP.
+                    </p>
+                    {ollamaUrlError && (
+                      <p className="mt-1 text-[11px] text-[var(--error)]">
+                        {ollamaUrlError}
+                      </p>
+                    )}
                   </div>
                 </>
               )}

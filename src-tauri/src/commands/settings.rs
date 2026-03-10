@@ -1,6 +1,6 @@
 use tauri::State;
 
-use crate::models::GameSettings;
+use crate::models::{normalize_ollama_url, GameSettings};
 use crate::narrative::ollama::{ModelInfo, OllamaClient, OllamaStatus};
 use crate::persistence::save_load;
 use crate::persistence::state::{DbState, SettingsState};
@@ -16,15 +16,17 @@ pub fn update_settings(
     settings: GameSettings,
     db_state: State<DbState>,
     settings_state: State<SettingsState>,
-) -> Result<(), String> {
+) -> Result<GameSettings, String> {
+    let settings = settings.validated_for_update()?;
+
     // Lock ordering: always SettingsState before DbState to match game.rs
     let mut current = settings_state.0.lock().map_err(|e| e.to_string())?;
     let db = db_state.0.lock().map_err(|e| e.to_string())?;
     save_load::save_settings(&db, &settings)?;
     drop(db);
 
-    *current = settings;
-    Ok(())
+    *current = settings.clone();
+    Ok(settings)
 }
 
 #[tauri::command]
@@ -33,7 +35,7 @@ pub async fn get_ollama_status(
 ) -> Result<OllamaStatus, String> {
     let url = {
         let settings = settings_state.0.lock().map_err(|e| e.to_string())?;
-        settings.ollama_url.clone()
+        normalize_ollama_url(&settings.ollama_url)?
     };
     let client = OllamaClient::new(&url);
     client.check_health().await
@@ -45,7 +47,7 @@ pub async fn get_available_models(
 ) -> Result<Vec<ModelInfo>, String> {
     let url = {
         let settings = settings_state.0.lock().map_err(|e| e.to_string())?;
-        settings.ollama_url.clone()
+        normalize_ollama_url(&settings.ollama_url)?
     };
     let client = OllamaClient::new(&url);
     client.list_models().await

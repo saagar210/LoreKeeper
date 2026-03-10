@@ -3,6 +3,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { TAURI_COMMANDS } from "../lib/tauriCommands";
 import type { GameSettings, ModelInfo, OllamaStatus } from "../store/types";
 
+type SettingsUpdateResult =
+  | { ok: true; settings: GameSettings }
+  | { ok: false; message: string };
+
 const DEFAULT_SETTINGS: GameSettings = {
   ollamaEnabled: false,
   ollamaModel: "llama3.2",
@@ -44,12 +48,19 @@ export function useSettings() {
     async (partial: Partial<GameSettings>) => {
       const updated = { ...settingsRef.current, ...partial };
       try {
-        await invoke(TAURI_COMMANDS.updateSettings, { settings: updated });
-        setSettings(updated);
+        const saved = await invoke<GameSettings>(TAURI_COMMANDS.updateSettings, {
+          settings: updated,
+        });
+        setSettings(saved);
+        return { ok: true, settings: saved } satisfies SettingsUpdateResult;
       } catch (err) {
         if (shouldLogSettingsErrors) {
           console.error("Failed to update settings:", err);
         }
+        return {
+          ok: false,
+          message: err instanceof Error ? err.message : String(err),
+        } satisfies SettingsUpdateResult;
       }
     },
     [],

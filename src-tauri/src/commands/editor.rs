@@ -4,10 +4,50 @@ use crate::models::WorldState;
 
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ModuleExportResult {
+    pub module_id: String,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ValidationResult {
     pub valid: bool,
     pub errors: Vec<String>,
     pub warnings: Vec<String>,
+}
+
+fn sanitize_module_name(name: &str) -> Result<String, String> {
+    let trimmed = name.trim();
+    if trimmed.is_empty() {
+        return Err("Module name cannot be empty.".into());
+    }
+    if trimmed.len() > 64 {
+        return Err("Module name must be 64 characters or fewer.".into());
+    }
+    if trimmed
+        .chars()
+        .any(|c| c.is_control() || matches!(c, '.' | '/' | '\\' | ':'))
+    {
+        return Err(
+            "Module name cannot contain '.', '/', '\\', ':', or control characters.".into(),
+        );
+    }
+
+    let slug = trimmed
+        .to_lowercase()
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+        .collect::<String>()
+        .split('_')
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join("_");
+
+    if slug.is_empty() {
+        return Err("Module name must include letters or numbers.".into());
+    }
+
+    Ok(format!("{slug}.json"))
 }
 
 #[tauri::command]
@@ -85,7 +125,11 @@ pub fn validate_module_json(json: String) -> Result<ValidationResult, String> {
 }
 
 #[tauri::command]
-pub fn export_module(app: tauri::AppHandle, name: String, json: String) -> Result<String, String> {
+pub fn export_module(
+    app: tauri::AppHandle,
+    name: String,
+    json: String,
+) -> Result<ModuleExportResult, String> {
     // Validate first
     let validation = validate_module_json(json.clone())?;
     if !validation.valid {
@@ -95,22 +139,14 @@ pub fn export_module(app: tauri::AppHandle, name: String, json: String) -> Resul
         ));
     }
 
-    // Validate name to prevent path traversal
-    let sanitized = name.trim();
-    if sanitized.is_empty() {
-        return Err("Module name cannot be empty.".into());
-    }
-    if sanitized.contains('.') || sanitized.contains('/') || sanitized.contains('\\') {
-        return Err("Module name cannot contain '.', '/', or '\\'.".into());
-    }
+    let module_id = sanitize_module_name(&name)?;
 
     // Save to modules directory
     let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     let modules_dir = app_data_dir.join("modules");
     std::fs::create_dir_all(&modules_dir).map_err(|e| e.to_string())?;
 
-    let filename = format!("{}.json", sanitized.to_lowercase().replace(' ', "_"));
-    let filepath = modules_dir.join(&filename);
+    let filepath = modules_dir.join(&module_id);
 
     // Pretty print JSON
     let parsed: serde_json::Value = serde_json::from_str(&json).map_err(|e| e.to_string())?;
@@ -118,7 +154,7 @@ pub fn export_module(app: tauri::AppHandle, name: String, json: String) -> Resul
 
     std::fs::write(&filepath, pretty).map_err(|e| e.to_string())?;
 
-    Ok(filepath.to_string_lossy().to_string())
+    Ok(ModuleExportResult { module_id })
 }
 
 #[cfg(test)]
@@ -160,10 +196,8 @@ mod tests {
     fn validate_dangling_exit_reference() {
         let mut state = world_builder::build_thornhold();
         if let Some(loc) = state.locations.get_mut("courtyard") {
-            loc.exits.insert(
-                crate::models::Direction::Up,
-                "phantom_room".into(),
-            );
+            loc.exits
+                .insert(crate::models::Direction::Up, "phantom_room".into());
         }
         let json = serde_json::to_string(&state).unwrap();
         let result = validate_module_json(json).unwrap();
@@ -240,5 +274,30 @@ mod tests {
         let json = serde_json::to_string(&state).unwrap();
         let result = validate_module_json(json).unwrap();
         assert!(!result.valid);
+    }
+
+    #[test]
+    fn sanitize_module_name_creates_safe_module_id() {
+        assert_eq!(
+            sanitize_module_name(" Thornhold Depths ").unwrap(),
+            "thornhold_depths.json"
+        );
+        assert_eq!(
+            sanitize_module_name("Temple@Night!").unwrap(),
+            "temple_night.json"
+        );
+    }
+
+    #[test]
+    fn sanitize_module_name_rejects_path_like_input() {
+        assert!(sanitize_module_name("../thornhold").is_err());
+        assert!(sanitize_module_name("mods\\thornhold").is_err());
+        assert!(sanitize_module_name("C:thornhold").is_err());
+    }
+
+    #[test]
+    fn sanitize_module_name_rejects_empty_or_non_alnum_values() {
+        assert!(sanitize_module_name("   ").is_err());
+        assert!(sanitize_module_name("!!!").is_err());
     }
 }

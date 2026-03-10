@@ -4,7 +4,7 @@
 
 You explore the dungeon. Rust owns the world state. An LLM writes the prose. No LLM? No problem — template narration kicks in so the game always works.
 
-## The Game: *The Depths of Thornhold*
+## The Game: _The Depths of Thornhold_
 
 ```
 You descend into the ruins of Thornhold, a fortress long abandoned
@@ -22,13 +22,13 @@ power. Will you claim it, destroy it, or strike a deal with its keeper?
 
 ## Tech Stack
 
-| Layer | Tech |
-|-------|------|
-| Desktop app | [Tauri 2](https://tauri.app/) |
-| Game engine | Rust |
-| Frontend | React 19 + TypeScript (strict) |
-| Narration | [Ollama](https://ollama.com/) (local LLM) with template fallback |
-| Persistence | SQLite (saves, stats, achievements, themes) |
+| Layer       | Tech                                                             |
+| ----------- | ---------------------------------------------------------------- |
+| Desktop app | [Tauri 2](https://tauri.app/)                                    |
+| Game engine | Rust                                                             |
+| Frontend    | React 19 + TypeScript (strict)                                   |
+| Narration   | [Ollama](https://ollama.com/) (local LLM) with template fallback |
+| Persistence | SQLite (saves, stats, achievements, themes)                      |
 
 ## Quick Start
 
@@ -120,6 +120,7 @@ Granular commands:
 - `npm run perf:lhci:prod`
 
 ### Commit helper
+
 `npm run commit` no longer uses an interactive third-party prompt. It now:
 
 - suggests a Conventional Commit message when you have staged changes, or
@@ -130,23 +131,27 @@ npm run commit -- "fix(repo): tighten lighthouse tooling"
 ```
 
 ### Lighthouse audits
+
 `npm run perf:lhci` and `npm run perf:lhci:prod` now use a repo-owned Lighthouse runner.
 It serves the built frontend with `vite preview`, runs the configured number of Lighthouse
 passes, writes results to `.perf-results/lighthouse.json`, and enforces the score thresholds
 defined in `lighthouserc.json` or `.lighthouserc.production.json`.
 
 ### Performance profile policy
+
 - Baseline checks (`perf-foundation`) run on pull requests for continuous signal.
 - Enforced production budgets (`perf-enforced`) run when `PERF_PROFILE=production`.
 - Required gate policy: `fail` or `not-run` on required checks blocks done-state.
 - SEO remains informational for this desktop Tauri app, so Lighthouse SEO is tracked as a warning rather than a release blocker.
 
 ### Linux note for Rust/Tauri checks
+
 Rust/Tauri checks require GTK/GLib development libraries (for example `glib-2.0`).
 If `cargo clippy` or `cargo test` fails with missing `glib-2.0.pc`, install the system
 packages used in CI (`libwebkit2gtk-4.1-dev`, `libappindicator3-dev`, `librsvg2-dev`, `patchelf`, `libgtk-3-dev`) before rerunning full verification.
 
 ### Rust verification cache location
+
 `npm run tauri ...`, `npm run lint:rust`, and `npm run test:rust` default Cargo build output to
 `$HOME/.cache/lorekeeper/cargo-target` (override with `LOREKEEPER_CARGO_TARGET_DIR`).
 This avoids path-separator issues on some machines and keeps cleanup behavior deterministic.
@@ -163,6 +168,7 @@ npm run build:frontend
 ```
 
 Recommended actions:
+
 - `Run app`: `npm run tauri dev`
 - `Lean dev`: `npm run dev:lean`
 - `Verify frontend`: `npm run verify:frontend`
@@ -176,6 +182,13 @@ Recommended actions:
 - `Stable` features are default for production paths.
 - `Beta` and `Experimental` features require explicit owner, rollback plan, and fallback path.
 - Current repository default: multi-agent workflows are optional accelerators, not required gates.
+
+## Desktop Security Notes
+
+- The Tauri main window now uses a least-privilege capability file that grants event access without the broader `core:default` shell surface.
+- Module loading avoids exposing absolute filesystem paths to the frontend; the UI works with safe module IDs and the backend resolves them inside the app-owned `modules/` directory.
+- Module export follows the same rule: the editor gets back a safe module ID rather than a machine-specific path.
+- Ollama integration is local-only by design. Settings now accept `http://localhost` and loopback IPs only, which keeps narration traffic on the same machine.
 
 ## Project Stats
 

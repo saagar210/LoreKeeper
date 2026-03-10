@@ -46,6 +46,7 @@ ollama pull llama3.2
 
 For the macOS internal release workflow, artifact contract, Gatekeeper notes, tester charter, and rollback reference, use:
 
+- `docs/internal-release-handoff.md`
 - `docs/internal-release-macos.md`
 - `docs/internal-release-checklist.md`
 

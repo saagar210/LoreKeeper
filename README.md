@@ -119,10 +119,27 @@ Granular commands:
 - `npm run perf:lhci`
 - `npm run perf:lhci:prod`
 
+### Commit helper
+`npm run commit` no longer uses an interactive third-party prompt. It now:
+
+- suggests a Conventional Commit message when you have staged changes, or
+- creates the commit directly when you pass a message, for example:
+
+```bash
+npm run commit -- "fix(repo): tighten lighthouse tooling"
+```
+
+### Lighthouse audits
+`npm run perf:lhci` and `npm run perf:lhci:prod` now use a repo-owned Lighthouse runner.
+It serves the built frontend with `vite preview`, runs the configured number of Lighthouse
+passes, writes results to `.perf-results/lighthouse.json`, and enforces the score thresholds
+defined in `lighthouserc.json` or `.lighthouserc.production.json`.
+
 ### Performance profile policy
 - Baseline checks (`perf-foundation`) run on pull requests for continuous signal.
 - Enforced production budgets (`perf-enforced`) run when `PERF_PROFILE=production`.
 - Required gate policy: `fail` or `not-run` on required checks blocks done-state.
+- SEO remains informational for this desktop Tauri app, so Lighthouse SEO is tracked as a warning rather than a release blocker.
 
 ### Linux note for Rust/Tauri checks
 Rust/Tauri checks require GTK/GLib development libraries (for example `glib-2.0`).

@@ -16,20 +16,27 @@ export function Transition({
   onExited,
 }: Props) {
   const [mounted, setMounted] = useState(show);
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(show);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const frameRef = useRef<number | null>(null);
   const onExitedRef = useRef(onExited);
+  const firstRenderRef = useRef(true);
   onExitedRef.current = onExited;
 
   useEffect(() => {
     if (show) {
       setMounted(true);
-      // Force a reflow before setting visible to trigger CSS transition
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          setVisible(true);
+      if (firstRenderRef.current) {
+        // Paint immediately on first load so headless browsers and audits see content.
+        setVisible(true);
+      } else {
+        setVisible(false);
+        frameRef.current = requestAnimationFrame(() => {
+          frameRef.current = requestAnimationFrame(() => {
+            setVisible(true);
+          });
         });
-      });
+      }
     } else {
       setVisible(false);
       timerRef.current = setTimeout(() => {
@@ -37,8 +44,10 @@ export function Transition({
         onExitedRef.current?.();
       }, duration);
     }
+    firstRenderRef.current = false;
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
+      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
     };
   }, [show, duration]);
 

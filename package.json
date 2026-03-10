@@ -22,7 +22,7 @@
     "clean:heavy": "scripts/clean-heavy-artifacts.sh",
     "clean:local": "scripts/clean-local-all.sh",
     "prepare": "husky",
-    "commit": "cz",
+    "commit": "node scripts/git/commit-helper.mjs",
     "commitlint": "commitlint",
     "git:guard:branch": "bash scripts/git/guard-branch.sh",
     "git:guard:no-main-push": "bash scripts/git/guard-no-main-push.sh",
@@ -39,8 +39,8 @@
     "perf:build": "node scripts/perf/measure-build-time.mjs",
     "perf:assets": "bash scripts/perf/check-assets.sh",
     "perf:memory": "node --expose-gc scripts/perf/memory-smoke.mjs",
-    "perf:lhci": "./node_modules/.bin/lhci autorun --config=lighthouserc.json",
-    "perf:lhci:prod": "./node_modules/.bin/lhci autorun --config=.lighthouserc.production.json",
+    "perf:lhci": "node scripts/perf/run-lighthouse.mjs lighthouserc.json",
+    "perf:lhci:prod": "node scripts/perf/run-lighthouse.mjs .lighthouserc.production.json",
     "perf:summary": "node scripts/perf/summarize.mjs",
     "lint-staged": "lint-staged"
   },
@@ -50,6 +50,9 @@
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
+    "@playwright/test": "^1.52.0",
     "@tailwindcss/vite": "^4.1.18",
     "@tauri-apps/cli": "^2",
     "@testing-library/jest-dom": "^6.9.1",
@@ -58,25 +61,16 @@
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
+    "chrome-launcher": "^1.2.1",
+    "husky": "^9.1.7",
     "jsdom": "^28.0.0",
+    "lighthouse": "^13.0.3",
+    "lint-staged": "^15.5.2",
+    "prettier": "^3.6.2",
     "tailwindcss": "^4.1.18",
     "typescript": "~5.8.3",
     "vite": "^7.0.4",
-    "@playwright/test": "^1.52.0",
-    "vitest": "^4.0.18",
-    "@commitlint/cli": "^19.8.1",
-    "@commitlint/config-conventional": "^19.8.1",
-    "@commitlint/cz-commitlint": "^19.8.1",
-    "@lhci/cli": "^0.15.1",
-    "commitizen": "^4.3.1",
-    "husky": "^9.1.7",
-    "lint-staged": "^15.5.2",
-    "prettier": "^3.6.2"
-  },
-  "config": {
-    "commitizen": {
-      "path": "@commitlint/cz-commitlint"
-    }
+    "vitest": "^4.0.18"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx,mjs,cjs,json,md,css,scss,yml,yaml}": [

@@ -1,21 +1,22 @@
 # LoreKeeper Internal Release Checklist
 
-This checklist records the current internal release candidate evidence for the macOS unsigned build line.
+This checklist records the current internal release evidence for the macOS unsigned build line.
 
 ## Candidate
 
-- Candidate branch: `codex/fix/default-branch-risk-hardening`
+- Current internal release ref: `master @ dd1e8fb`
+- Promotion source branch: `codex/fix/default-branch-risk-hardening`
 - Default branch fallback ref: `origin/master @ 990bae4`
 - Exact release commit SHA: read from the generated `release-manifest.json`
 - Exact artifact directory: `release-artifacts/internal/macos/<version>-<shortsha>/`
 
 ## Branch Convergence Decision
 
-- `codex/lean-dev-mode` -> included in candidate
-- `codex/chore/bootstrap-codex-os` -> included in candidate
-- `codex/build/default-branch-risk-hardening` -> included in candidate
-- `codex/aggressive-prune-cleanup` -> included in candidate
-- `origin/master` Codex bootstrap-default commits -> treated as superseded by the candidate branch, not a separate release blocker
+- `codex/lean-dev-mode` -> included in the merged internal release line
+- `codex/chore/bootstrap-codex-os` -> partially superseded by the merged release line; remaining differences are deferred and not part of the current internal release scope
+- `codex/build/default-branch-risk-hardening` -> included in the merged internal release line
+- `codex/aggressive-prune-cleanup` -> included in the merged internal release line
+- `origin/master` bootstrap-default commits before PR `#8` -> superseded by the merged release promotion
 
 ## Verification Results
 
@@ -82,11 +83,12 @@ Waiver note:
 
 - The macOS artifact is unsigned, so Gatekeeper may prompt on first launch.
 - Packaged interactive smoke is partially waived because the repo does not yet automate bundled Tauri UI interaction.
+- One medium Rust dependency advisory remains open in the transitive GTK/Tauri desktop stack (`glib`). A safe lockfile-only bump is not available on the current `tauri`/`gtk` line, so this stays as an upstream-compatible follow-up rather than an internal-release blocker.
 - Tauri warns that the current bundle identifier ends with `.app`; this is not blocking the internal build but should be corrected before any public distribution work.
 
 ## Release Decision
 
-- Current status: Go for internal macOS release candidate distribution, with documented low-risk waivers only
+- Current status: Go for internal macOS release distribution from `master`, with documented low-risk waivers only
 - Blocking P0/P1 issues found in this pass: none
 
 ## Rollback

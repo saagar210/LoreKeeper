@@ -40,3 +40,6 @@ coverage/
 
 # Internal release artifacts
 release-artifacts/
+
+# Perf output
+.perf-results/

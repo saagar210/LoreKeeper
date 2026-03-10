@@ -1,6 +1,6 @@
 # LoreKeeper Internal Release Guide (macOS)
 
-This guide defines the current internal release contract for LoreKeeper.
+This guide defines the current internal release contract for LoreKeeper after promotion to `master`.
 
 ## Release Scope
 
@@ -8,7 +8,8 @@ This guide defines the current internal release contract for LoreKeeper.
 - Distribution posture: unsigned internal build
 - Signing/notarization: intentionally out of scope for this release
 - Default branch for promotion: `master`
-- Release candidate branch: `codex/fix/default-branch-risk-hardening`
+- Current internal release ref: `master @ dd1e8fb`
+- Promotion source branch: `codex/fix/default-branch-risk-hardening`
 - Candidate baseline before release-prep work: `42eed42`
 - Fallback ref captured before release-prep promotion: `origin/master` at `990bae4`
 
@@ -26,14 +27,14 @@ release-artifacts/internal/macos/<version>-<shortsha>/release-manifest.json
 
 ## Branch Convergence
 
-The current candidate already includes the branch work we needed for internal release:
+The merged internal release line already includes the branch work we needed for internal release:
 
 - `codex/lean-dev-mode` -> included
-- `codex/chore/bootstrap-codex-os` -> included
+- `codex/chore/bootstrap-codex-os` -> partially superseded by the merged internal release line; any remaining differences are deferred follow-up work
 - `codex/build/default-branch-risk-hardening` -> included
 - `codex/aggressive-prune-cleanup` -> included
 
-`origin/master` still contains older Codex bootstrap defaults that diverged separately. For this internal release, those commits are treated as superseded by the current candidate branch and are not a separate release blocker.
+The older open bootstrap PR line is not part of this release path. The merged internal release line is the source of truth for teammates and testers.
 
 ## Release Commands
 
@@ -74,9 +75,9 @@ Accepted secondary outputs:
 
 - any other macOS bundle file emitted by Tauri during the same build
 
-## Current Candidate Highlights
+## Current Release Highlights
 
-Compared with the default branch fallback line, this candidate adds:
+Compared with the default branch fallback line, this internal release line adds:
 
 - lean dev mode plus explicit cleanup commands
 - canonical repo verification and CI/perf contract alignment
@@ -149,6 +150,7 @@ Do not block this internal release on:
 - Internal release verification relies on the existing browser E2E harness plus local packaged-build smoke. There is no repo-owned fully automated GUI test harness for the packaged Tauri app yet.
 - Ollama remains optional and local-only by design. Internal release validation should not treat unavailable Ollama as a blocker if the fallback narration path works.
 - The manual internal macOS GitHub workflow installs the Playwright browser before verification; if that step ever drifts, the workflow will fail before artifact creation rather than producing a weak release signal.
+- One medium Rust dependency advisory remains open in the transitive GTK/Tauri desktop stack (`glib`). A dry-run attempt to bump directly to `0.20.0` fails because the current Tauri GTK line requires `glib ^0.18`, so this remains an upstream-compatible follow-up rather than an internal-release blocker.
 - Tauri warns that the bundle identifier `com.lorekeeper.app` ends with `.app`. The current build still succeeds, but that identifier should be corrected before public distribution if we plan any data-path migration carefully.
 
 ## Reporting and Triage

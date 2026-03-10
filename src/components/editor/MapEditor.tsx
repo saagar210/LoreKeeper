@@ -1,11 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { trapFocus } from "../../lib/focusTrap";
+import { TAURI_COMMANDS } from "../../lib/tauriCommands";
 import type {
   Direction,
   EditorConnection,
   EditorRoom,
   Item,
+  ModuleExportResult,
   Mood,
   Npc,
   ValidationResult,
@@ -20,7 +22,14 @@ interface Props {
 const ROOM_W = 120;
 const ROOM_H = 60;
 
-const ALL_DIRECTIONS: Direction[] = ["north", "south", "east", "west", "up", "down"];
+const ALL_DIRECTIONS: Direction[] = [
+  "north",
+  "south",
+  "east",
+  "west",
+  "up",
+  "down",
+];
 
 function oppositeDir(d: Direction): Direction {
   const map: Record<Direction, Direction> = {
@@ -180,7 +189,11 @@ export function MapEditor({ onClose }: Props) {
   const [selectedTool, setSelectedTool] = useState<EditorTool>("select");
   const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [connectFrom, setConnectFrom] = useState<string | null>(null);
-  const [dragging, setDragging] = useState<{ roomId: string; offsetX: number; offsetY: number } | null>(null);
+  const [dragging, setDragging] = useState<{
+    roomId: string;
+    offsetX: number;
+    offsetY: number;
+  } | null>(null);
   const [exportName, setExportName] = useState("");
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
@@ -220,7 +233,11 @@ export function MapEditor({ onClose }: Props) {
         const rect = svg.getBoundingClientRect();
         const x = e.clientX - rect.left - ROOM_W / 2;
         const y = e.clientY - rect.top - ROOM_H / 2;
-        const newRoom = defaultRoom(Math.max(0, x), Math.max(0, y), roomCounterRef.current++);
+        const newRoom = defaultRoom(
+          Math.max(0, x),
+          Math.max(0, y),
+          roomCounterRef.current++,
+        );
         setRooms((prev) => [...prev, newRoom]);
         setSelectedRoomId(newRoom.id);
         setSelectedTool("select");
@@ -253,13 +270,19 @@ export function MapEditor({ onClose }: Props) {
           if (fromRoom && toRoom) {
             const usedFromDirs = connections
               .filter((c) => c.fromId === connectFrom || c.toId === connectFrom)
-              .flatMap((c) => (c.fromId === connectFrom ? [c.fromDir] : [c.toDir]));
+              .flatMap((c) =>
+                c.fromId === connectFrom ? [c.fromDir] : [c.toDir],
+              );
             const usedToDirs = connections
               .filter((c) => c.fromId === roomId || c.toId === roomId)
               .flatMap((c) => (c.fromId === roomId ? [c.fromDir] : [c.toDir]));
 
-            const availFrom = ALL_DIRECTIONS.filter((d) => !usedFromDirs.includes(d));
-            const availTo = ALL_DIRECTIONS.filter((d) => !usedToDirs.includes(d));
+            const availFrom = ALL_DIRECTIONS.filter(
+              (d) => !usedFromDirs.includes(d),
+            );
+            const availTo = ALL_DIRECTIONS.filter(
+              (d) => !usedToDirs.includes(d),
+            );
 
             // Pick best direction based on relative position
             const dx = toRoom.x - fromRoom.x;
@@ -352,7 +375,9 @@ export function MapEditor({ onClose }: Props) {
     (updated: EditorRoom) => {
       setRooms((prev) => {
         const oldRoom = prev.find((r) => r.id === selectedRoomId);
-        const newRooms = prev.map((r) => (r.id === selectedRoomId ? updated : r));
+        const newRooms = prev.map((r) =>
+          r.id === selectedRoomId ? updated : r,
+        );
         // Update connection references if ID changed
         if (oldRoom && oldRoom.id !== updated.id) {
           setConnections((prevConns) =>
@@ -440,7 +465,10 @@ export function MapEditor({ onClose }: Props) {
   const handleValidate = useCallback(async () => {
     const json = buildWorldStateJson(rooms, connections, items, npcs);
     try {
-      const result = await invoke<ValidationResult>("validate_module_json", { json });
+      const result = await invoke<ValidationResult>(
+        TAURI_COMMANDS.validateModuleJson,
+        { json },
+      );
       setValidation(result);
       if (result.valid) {
         showStatus("Module is valid.");
@@ -460,11 +488,14 @@ export function MapEditor({ onClose }: Props) {
     }
     const json = buildWorldStateJson(rooms, connections, items, npcs);
     try {
-      const path = await invoke<string>("export_module", {
-        name: exportName.trim(),
-        json,
-      });
-      showStatus(`Exported to: ${path}`);
+      const result = await invoke<ModuleExportResult>(
+        TAURI_COMMANDS.exportModule,
+        {
+          name: exportName.trim(),
+          json,
+        },
+      );
+      showStatus(`Module exported as ${result.moduleId}. Ready to load.`);
       setShowExportDialog(false);
       setExportName("");
     } catch (err) {
@@ -583,7 +614,8 @@ export function MapEditor({ onClose }: Props) {
                       fill="var(--text-dim)"
                       opacity={0.5}
                     >
-                      {conn.fromDir[0].toUpperCase()}-{conn.toDir[0].toUpperCase()}
+                      {conn.fromDir[0].toUpperCase()}-
+                      {conn.toDir[0].toUpperCase()}
                     </text>
                   </g>
                 );
@@ -611,7 +643,9 @@ export function MapEditor({ onClose }: Props) {
                     handleRoomClick(room.id);
                   }}
                   onMouseDown={(e) => handleMouseDown(e, room.id)}
-                  style={{ cursor: selectedTool === "select" ? "grab" : undefined }}
+                  style={{
+                    cursor: selectedTool === "select" ? "grab" : undefined,
+                  }}
                 >
                   <rect
                     x={room.x}

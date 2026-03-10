@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 pub struct ModuleInfo {
     pub name: String,
     pub description: String,
-    pub path: String,
+    pub module_id: String,
     pub location_count: usize,
     pub item_count: usize,
 }

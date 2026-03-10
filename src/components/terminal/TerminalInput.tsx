@@ -101,7 +101,7 @@ export function TerminalInput({ onSubmit, disabled }: Props) {
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           disabled={disabled}
-          className="flex-1 bg-transparent text-[var(--text)] outline-none placeholder:text-[var(--text-dim)]"
+          className="min-h-8 flex-1 bg-transparent text-[var(--text)] outline-none placeholder:text-[var(--text-dim)]"
           placeholder={disabled ? "..." : "Type a command..."}
           aria-label="Game command input"
           aria-autocomplete="list"

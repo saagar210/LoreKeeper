@@ -29,6 +29,11 @@ describe("SettingsPanel", () => {
     mockSettingsData = createSettings();
     mockOllamaStatusData = { connected: false, version: null };
     mockModelsData = [];
+    mockUpdateSettings.mockReset();
+    mockUpdateSettings.mockResolvedValue({
+      ok: true,
+      settings: mockSettingsData,
+    });
   });
 
   it("has role=dialog", () => {
@@ -97,6 +102,50 @@ describe("SettingsPanel", () => {
     mockSettingsData = createSettings({ ollamaEnabled: true });
     render(<SettingsPanel onClose={vi.fn()} onThemeChange={vi.fn()} />);
     expect(screen.getByText("Model")).toBeInTheDocument();
+  });
+
+  it("saves the Ollama URL on blur", async () => {
+    const user = userEvent.setup();
+    const savedSettings = createSettings({
+      ollamaEnabled: true,
+      ollamaUrl: "http://127.0.0.1:11434",
+    });
+    mockSettingsData = createSettings({ ollamaEnabled: true });
+    mockUpdateSettings.mockResolvedValueOnce({
+      ok: true,
+      settings: savedSettings,
+    });
+
+    render(<SettingsPanel onClose={vi.fn()} onThemeChange={vi.fn()} />);
+
+    const input = screen.getByDisplayValue("http://localhost:11434");
+    await user.clear(input);
+    await user.type(input, "http://127.0.0.1:11434");
+    await user.tab();
+
+    expect(mockUpdateSettings).toHaveBeenCalledWith({
+      ollamaUrl: "http://127.0.0.1:11434",
+    });
+  });
+
+  it("shows a validation error when the Ollama URL is rejected", async () => {
+    const user = userEvent.setup();
+    mockSettingsData = createSettings({ ollamaEnabled: true });
+    mockUpdateSettings.mockResolvedValueOnce({
+      ok: false,
+      message: "Ollama URL must point to localhost or a loopback address.",
+    });
+
+    render(<SettingsPanel onClose={vi.fn()} onThemeChange={vi.fn()} />);
+
+    const input = screen.getByDisplayValue("http://localhost:11434");
+    await user.clear(input);
+    await user.type(input, "http://example.com:11434");
+    await user.tab();
+
+    expect(
+      screen.getByText("Ollama URL must point to localhost or a loopback address."),
+    ).toBeInTheDocument();
   });
 
   it("closes on backdrop click", async () => {

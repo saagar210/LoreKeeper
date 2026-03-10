@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createCommandResponse,
   createOutputLines,
@@ -22,6 +22,20 @@ mockListen.mockResolvedValue(mockUnlisten);
 const { useGame } = await import("./useGame");
 
 describe("useGame", () => {
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    mockInvoke.mockReset();
+    mockListen.mockReset();
+    mockUnlisten.mockReset();
+    mockListen.mockResolvedValue(mockUnlisten);
+  });
+
+  afterEach(() => {
+    errorSpy.mockRestore();
+  });
+
   it("initializeGame sets history, worldState, isReady", async () => {
     const response = createCommandResponse();
     mockInvoke.mockResolvedValueOnce(response);

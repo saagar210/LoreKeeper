@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
+import { TAURI_COMMANDS } from "../../lib/tauriCommands";
 import type { Location, MapData, Player } from "../../store/types";
 
 interface Props {
@@ -12,7 +13,7 @@ export function MiniMap({ locations, player }: Props) {
 
   useEffect(() => {
     let ignore = false;
-    invoke<MapData>("get_map_data")
+    invoke<MapData>(TAURI_COMMANDS.getMapData)
       .then((data) => {
         if (!ignore) setMapData(data);
       })

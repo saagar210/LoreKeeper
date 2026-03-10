@@ -1,11 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useCallback } from "react";
+import { TAURI_COMMANDS } from "../lib/tauriCommands";
 
 export function useNarrationControls() {
   const rate = useCallback(
     async (promptHash: string, rating: number, model: string) => {
       try {
-        await invoke("rate_narration", { promptHash, rating, model });
+        await invoke(TAURI_COMMANDS.rateNarration, { promptHash, rating, model });
       } catch {
         // Rating is non-critical — silently ignore failures
       }
@@ -15,7 +16,7 @@ export function useNarrationControls() {
 
   const retry = useCallback(async () => {
     try {
-      await invoke("retry_narration");
+      await invoke(TAURI_COMMANDS.retryNarration);
     } catch (err) {
       console.error("Retry narration failed:", err);
     }

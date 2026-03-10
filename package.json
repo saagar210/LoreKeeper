@@ -10,17 +10,42 @@
     "build": "./node_modules/.bin/tsc && ./node_modules/.bin/vite build",
     "build:frontend": "./node_modules/.bin/vite build",
     "preview": "./node_modules/.bin/vite preview",
-    "tauri": "./node_modules/.bin/tauri",
+    "tauri": "scripts/run-tauri.sh",
     "test": "./node_modules/.bin/vitest run",
     "test:frontend": "./node_modules/.bin/vitest run",
     "test:watch": "./node_modules/.bin/vitest",
     "test:e2e": "./node_modules/.bin/playwright test --config e2e/playwright.config.ts",
-    "lint:rust": "cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings",
-    "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml",
+    "lint:rust": "scripts/rust/lint.sh",
+    "test:rust": "scripts/rust/test.sh",
     "verify:frontend": "npm run typecheck && npm run test:frontend && npm run build:frontend",
     "verify:full": "npm run verify:frontend && npm run lint:rust && npm run test:rust",
+    "version:check": "node scripts/release/version-check.mjs",
+    "verify:internal-release": "bash .codex/scripts/run_verify_commands.sh && npm run verify:full && npm run test:e2e",
+    "release:internal:mac": "node scripts/release/build-internal-mac.mjs",
     "clean:heavy": "scripts/clean-heavy-artifacts.sh",
-    "clean:local": "scripts/clean-local-all.sh"
+    "clean:local": "scripts/clean-local-all.sh",
+    "prepare": "husky",
+    "commit": "node scripts/git/commit-helper.mjs",
+    "commitlint": "commitlint",
+    "git:guard:branch": "bash scripts/git/guard-branch.sh",
+    "git:guard:no-main-push": "bash scripts/git/guard-no-main-push.sh",
+    "git:guard:atomic": "bash scripts/git/guard-atomic.sh",
+    "git:guard:generated": "bash scripts/git/guard-generated.sh",
+    "git:guard:large-files": "bash scripts/git/guard-large-files.sh",
+    "git:guard:secrets": "bash scripts/git/guard-secrets.sh",
+    "git:guard:all": "npm run git:guard:branch && npm run git:guard:atomic && npm run git:guard:generated && npm run git:guard:large-files && npm run git:guard:secrets",
+    "git:commit:propose": "node scripts/git/propose-commit-message.mjs",
+    "git:session:save": "bash scripts/git/session-save.sh",
+    "git:session:resume": "bash scripts/git/session-resume.sh",
+    "pr:notes": "bash scripts/git/generate-pr-notes.sh",
+    "perf:bundle": "node scripts/perf/bundle-report.mjs",
+    "perf:build": "node scripts/perf/measure-build-time.mjs",
+    "perf:assets": "bash scripts/perf/check-assets.sh",
+    "perf:memory": "node --expose-gc scripts/perf/memory-smoke.mjs",
+    "perf:lhci": "node scripts/perf/run-lighthouse.mjs lighthouserc.json",
+    "perf:lhci:prod": "node scripts/perf/run-lighthouse.mjs .lighthouserc.production.json",
+    "perf:summary": "node scripts/perf/summarize.mjs",
+    "lint-staged": "lint-staged"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
@@ -28,6 +53,9 @@
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
+    "@playwright/test": "^1.52.0",
     "@tailwindcss/vite": "^4.1.18",
     "@tauri-apps/cli": "^2",
     "@testing-library/jest-dom": "^6.9.1",
@@ -36,11 +64,20 @@
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
+    "chrome-launcher": "^1.2.1",
+    "husky": "^9.1.7",
     "jsdom": "^28.0.0",
+    "lighthouse": "^13.0.3",
+    "lint-staged": "^15.5.2",
+    "prettier": "^3.6.2",
     "tailwindcss": "^4.1.18",
     "typescript": "~5.8.3",
     "vite": "^7.0.4",
-    "@playwright/test": "^1.52.0",
     "vitest": "^4.0.18"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,mjs,cjs,json,md,css,scss,yml,yaml}": [
+      "prettier --write"
+    ]
   }
 }

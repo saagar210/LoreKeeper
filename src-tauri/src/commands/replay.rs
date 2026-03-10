@@ -1,3 +1,4 @@
+use rusqlite::Connection;
 use tauri::State;
 
 use crate::models::CommandLogEntry;
@@ -25,6 +26,10 @@ pub struct ReplayDetail {
 #[tauri::command]
 pub fn list_replays(db_state: State<DbState>) -> Result<Vec<ReplayInfo>, String> {
     let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    list_replay_rows(&conn)
+}
+
+fn list_replay_rows(conn: &Connection) -> Result<Vec<ReplayInfo>, String> {
     let mut stmt = conn
         .prepare(
             "SELECT id, ended_at, ending_type, turns_taken, quests_completed, command_log \
@@ -34,7 +39,7 @@ pub fn list_replays(db_state: State<DbState>) -> Result<Vec<ReplayInfo>, String>
         )
         .map_err(|e| e.to_string())?;
 
-    let replays = stmt
+    let rows = stmt
         .query_map([], |row| {
             let id: i64 = row.get(0)?;
             let ended_at: String = row.get(1)?;
@@ -56,14 +61,26 @@ pub fn list_replays(db_state: State<DbState>) -> Result<Vec<ReplayInfo>, String>
         })
         .map_err(|e| e.to_string())?;
 
-    replays
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| e.to_string())
+    let mut replays = Vec::new();
+    for row in rows {
+        let Ok(info) = row else {
+            continue;
+        };
+        if !info.ended_at.trim().is_empty() {
+            replays.push(info);
+        }
+    }
+
+    Ok(replays)
 }
 
 #[tauri::command]
 pub fn get_replay(id: i64, db_state: State<DbState>) -> Result<ReplayDetail, String> {
     let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    get_replay_row(&conn, id)
+}
+
+fn get_replay_row(conn: &Connection, id: i64) -> Result<ReplayDetail, String> {
     let row = conn
         .query_row(
             "SELECT id, ended_at, ending_type, turns_taken, quests_completed, command_log \
@@ -104,7 +121,8 @@ pub fn get_replay(id: i64, db_state: State<DbState>) -> Result<ReplayDetail, Str
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{get_replay_row, list_replay_rows, ReplayInfo};
+    use crate::models::CommandLogEntry;
     use crate::persistence::database;
     use rusqlite::Connection;
 
@@ -117,50 +135,14 @@ mod tests {
     #[test]
     fn list_replays_empty_when_no_playthroughs() {
         let conn = setup_db();
-        let mut stmt = conn
-            .prepare(
-                "SELECT id, ended_at, ending_type, turns_taken, quests_completed, command_log \
-                 FROM playthroughs \
-                 WHERE command_log IS NOT NULL AND command_log != '' \
-                 ORDER BY id DESC LIMIT 20",
-            )
-            .unwrap();
-
-        let replays: Vec<ReplayInfo> = stmt
-            .query_map([], |row| {
-                let id: i64 = row.get(0)?;
-                let ended_at: String = row.get(1)?;
-                let ending_type: Option<String> = row.get(2)?;
-                let turns_taken: Option<i32> = row.get(3)?;
-                let quests_completed: Option<i32> = row.get(4)?;
-                let log_json: String = row.get(5)?;
-                let command_count = serde_json::from_str::<Vec<serde_json::Value>>(&log_json)
-                    .map(|v| v.len())
-                    .unwrap_or(0);
-                Ok(ReplayInfo {
-                    id,
-                    ended_at,
-                    ending_type,
-                    turns_taken,
-                    quests_completed,
-                    command_count,
-                })
-            })
-            .unwrap()
-            .collect::<Result<Vec<_>, _>>()
-            .unwrap();
-
+        let replays = list_replay_rows(&conn).unwrap();
         assert!(replays.is_empty());
     }
 
     #[test]
     fn get_replay_returns_error_for_nonexistent_id() {
         let conn = setup_db();
-        let result = conn.query_row(
-            "SELECT id FROM playthroughs WHERE id = ?1",
-            [999],
-            |row| row.get::<_, i64>(0),
-        );
+        let result = get_replay_row(&conn, 999);
         assert!(result.is_err());
     }
 
@@ -188,39 +170,7 @@ mod tests {
             ],
         ).unwrap();
 
-        let mut stmt = conn
-            .prepare(
-                "SELECT id, ended_at, ending_type, turns_taken, quests_completed, command_log \
-                 FROM playthroughs \
-                 WHERE command_log IS NOT NULL AND command_log != '' \
-                 ORDER BY id DESC LIMIT 20",
-            )
-            .unwrap();
-
-        let replays: Vec<ReplayInfo> = stmt
-            .query_map([], |row| {
-                let id: i64 = row.get(0)?;
-                let ended_at: String = row.get(1)?;
-                let ending_type: Option<String> = row.get(2)?;
-                let turns_taken: Option<i32> = row.get(3)?;
-                let quests_completed: Option<i32> = row.get(4)?;
-                let log_json: String = row.get(5)?;
-                let command_count = serde_json::from_str::<Vec<serde_json::Value>>(&log_json)
-                    .map(|v| v.len())
-                    .unwrap_or(0);
-                Ok(ReplayInfo {
-                    id,
-                    ended_at,
-                    ending_type,
-                    turns_taken,
-                    quests_completed,
-                    command_count,
-                })
-            })
-            .unwrap()
-            .collect::<Result<Vec<_>, _>>()
-            .unwrap();
-
+        let replays = list_replay_rows(&conn).unwrap();
         assert_eq!(replays.len(), 1);
         assert_eq!(replays[0].command_count, 1);
         assert_eq!(replays[0].ending_type, Some("VictoryPeace".to_string()));
@@ -242,5 +192,35 @@ mod tests {
         let deserialized: ReplayInfo = serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized.id, 1);
         assert_eq!(deserialized.command_count, 5);
+    }
+
+    #[test]
+    fn list_replays_skips_rows_with_blank_end_time() {
+        let conn = setup_db();
+        let log_json = serde_json::to_string(&vec![CommandLogEntry {
+            turn: 0,
+            input: "look".to_string(),
+            location: "courtyard".to_string(),
+            timestamp_ms: 1700000000000,
+        }])
+        .unwrap();
+
+        conn.execute(
+            "INSERT INTO playthroughs (started_at, ended_at, ending_type, turns_taken, quests_completed, enemies_defeated, command_log)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            rusqlite::params![
+                "2025-01-01T00:00:00Z",
+                "",
+                "VictoryPeace",
+                1,
+                0,
+                0,
+                log_json,
+            ],
+        )
+        .unwrap();
+
+        let replays = list_replay_rows(&conn).unwrap();
+        assert!(replays.is_empty());
     }
 }

@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { TAURI_COMMANDS } from "../lib/tauriCommands";
 
 export function useAutocomplete() {
   const [completions, setCompletions] = useState<string[]>([]);
@@ -24,7 +25,7 @@ export function useAutocomplete() {
 
     debounceRef.current = setTimeout(async () => {
       try {
-        const results = await invoke<string[]>("get_completions", { prefix });
+        const results = await invoke<string[]>(TAURI_COMMANDS.getCompletions, { prefix });
         setCompletions(results);
         setSelectedIndex(results.length > 0 ? 0 : -1);
       } catch {

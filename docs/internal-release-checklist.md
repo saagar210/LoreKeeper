@@ -58,6 +58,7 @@ This checklist records the current internal release candidate evidence for the m
 - Existing local saves from a prior real user environment -> Waiver
 
 Waiver note:
+
 - We validated compatibility behavior through automated persistence tests and fail-safe handling, but we did not run a manual packaged-app session against a previously accumulated real user data set on this machine during this pass.
 
 ### Narration posture smoke
@@ -73,6 +74,7 @@ Waiver note:
 - Packaged-mode interactive gameplay beyond launch/window smoke -> Waiver
 
 Waiver note:
+
 - There is no repo-owned packaged Tauri GUI automation harness yet. Interactive bundled-mode confidence is covered by browser E2E plus direct packaged-app launch/window verification, and should receive one human tester pass during internal distribution.
 
 ## Known Issues

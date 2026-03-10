@@ -1,3 +1,6 @@
+use std::net::IpAddr;
+
+use reqwest::Url;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -68,6 +71,73 @@ impl Default for GameSettings {
     }
 }
 
+pub fn normalize_ollama_url(raw: &str) -> Result<String, String> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return Err("Ollama URL cannot be empty.".into());
+    }
+
+    let mut parsed = Url::parse(trimmed)
+        .map_err(|_| "Ollama URL must be a valid http://localhost address.".to_string())?;
+
+    if parsed.scheme() != "http" {
+        return Err("Ollama URL must use http.".into());
+    }
+
+    if !parsed.username().is_empty() || parsed.password().is_some() {
+        return Err("Ollama URL cannot include credentials.".into());
+    }
+
+    if parsed.query().is_some() || parsed.fragment().is_some() {
+        return Err("Ollama URL cannot include query strings or fragments.".into());
+    }
+
+    if parsed.path() != "/" && !parsed.path().is_empty() {
+        return Err("Ollama URL must point to the server root.".into());
+    }
+
+    let host = parsed
+        .host_str()
+        .ok_or_else(|| "Ollama URL must include a host.".to_string())?;
+    let is_loopback = host.eq_ignore_ascii_case("localhost")
+        || host
+            .trim_matches(|c| c == '[' || c == ']')
+            .parse::<IpAddr>()
+            .map(|ip| ip.is_loopback())
+            .unwrap_or(false);
+
+    if !is_loopback {
+        return Err("Ollama URL must point to localhost or a loopback address.".into());
+    }
+
+    parsed.set_path("");
+    Ok(parsed.to_string().trim_end_matches('/').to_string())
+}
+
+impl GameSettings {
+    pub fn validated_for_update(mut self) -> Result<Self, String> {
+        self.ollama_url = normalize_ollama_url(&self.ollama_url)?;
+        self.temperature = self.temperature.clamp(0.0, 2.0);
+        self.sound_volume = self.sound_volume.clamp(0.0, 1.0);
+        Ok(self)
+    }
+
+    pub fn sanitize_loaded(mut self) -> Self {
+        self.temperature = self.temperature.clamp(0.0, 2.0);
+        self.sound_volume = self.sound_volume.clamp(0.0, 1.0);
+
+        match normalize_ollama_url(&self.ollama_url) {
+            Ok(url) => self.ollama_url = url,
+            Err(_) => {
+                self.ollama_enabled = false;
+                self.ollama_url = Self::default().ollama_url;
+            }
+        }
+
+        self
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -93,5 +163,46 @@ mod tests {
         let deserialized: GameSettings = serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized.ollama_model, "llama3.2");
         assert!((deserialized.temperature - 0.7).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn normalizes_loopback_ollama_urls() {
+        assert_eq!(
+            normalize_ollama_url(" http://localhost:11434/ ").unwrap(),
+            "http://localhost:11434"
+        );
+        assert_eq!(
+            normalize_ollama_url("http://127.0.0.1:11434").unwrap(),
+            "http://127.0.0.1:11434"
+        );
+        assert_eq!(
+            normalize_ollama_url("http://[::1]:11434/").unwrap(),
+            "http://[::1]:11434"
+        );
+    }
+
+    #[test]
+    fn rejects_non_loopback_ollama_urls() {
+        assert!(normalize_ollama_url("https://localhost:11434").is_err());
+        assert!(normalize_ollama_url("http://192.168.1.10:11434").is_err());
+        assert!(normalize_ollama_url("http://example.com:11434").is_err());
+        assert!(normalize_ollama_url("http://localhost:11434/api").is_err());
+    }
+
+    #[test]
+    fn sanitize_loaded_disables_invalid_ollama_settings() {
+        let sanitized = GameSettings {
+            ollama_enabled: true,
+            ollama_url: "http://example.com:11434".into(),
+            temperature: 8.0,
+            sound_volume: 2.0,
+            ..GameSettings::default()
+        }
+        .sanitize_loaded();
+
+        assert!(!sanitized.ollama_enabled);
+        assert_eq!(sanitized.ollama_url, "http://localhost:11434");
+        assert_eq!(sanitized.temperature, 2.0);
+        assert_eq!(sanitized.sound_volume, 1.0);
     }
 }

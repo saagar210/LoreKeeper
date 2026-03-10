@@ -1,20 +1,29 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ReplayScreen } from "./ReplayScreen";
 
+const mockInvoke = vi.fn().mockResolvedValue([]);
+
 vi.mock("@tauri-apps/api/core", () => ({
-  invoke: vi.fn().mockResolvedValue([]),
+  invoke: (...args: unknown[]) => mockInvoke(...args),
 }));
 
 describe("ReplayScreen", () => {
-  it("renders with dialog role", () => {
+  beforeEach(() => {
+    mockInvoke.mockClear();
+    mockInvoke.mockResolvedValue([]);
+  });
+
+  it("renders with dialog role", async () => {
     render(<ReplayScreen onClose={() => {}} />);
+    await waitFor(() => expect(mockInvoke).toHaveBeenCalled());
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
-  it("shows Replays heading", () => {
+  it("shows Replays heading", async () => {
     render(<ReplayScreen onClose={() => {}} />);
+    await waitFor(() => expect(mockInvoke).toHaveBeenCalled());
     expect(screen.getByText("Replays")).toBeInTheDocument();
   });
 

@@ -4,9 +4,12 @@ import { trapFocus } from "../../lib/focusTrap";
 import {
   applyCustomTheme,
   applyTheme,
-  themes,
+  createDefaultCustomThemeConfig,
+  sanitizeCustomThemeConfig,
   themeVarNames,
 } from "../../lib/themes";
+import { normalizeThemeNameInput } from "../../lib/inputValidation";
+import { TAURI_COMMANDS } from "../../lib/tauriCommands";
 import type { CustomThemeInfo, ThemeConfig } from "../../store/types";
 
 interface Props {
@@ -31,16 +34,10 @@ const varLabels: Record<string, string> = {
   "--hp-low": "HP Low",
 };
 
-function getDefaultConfig(): ThemeConfig {
-  const config: ThemeConfig = {};
-  for (const v of themeVarNames) {
-    config[v] = themes.greenTerminal[v];
-  }
-  return config;
-}
-
 export function ThemeCreator({ onClose }: Props) {
-  const [config, setConfig] = useState<ThemeConfig>(getDefaultConfig);
+  const [config, setConfig] = useState<ThemeConfig>(
+    createDefaultCustomThemeConfig,
+  );
   const [themeName, setThemeName] = useState("");
   const [savedThemes, setSavedThemes] = useState<CustomThemeInfo[]>([]);
   const [message, setMessage] = useState<string | null>(null);
@@ -54,7 +51,9 @@ export function ThemeCreator({ onClose }: Props) {
 
   const fetchThemes = useCallback(async () => {
     try {
-      const result = await invoke<CustomThemeInfo[]>("list_custom_themes");
+      const result = await invoke<CustomThemeInfo[]>(
+        TAURI_COMMANDS.listCustomThemes,
+      );
       setSavedThemes(result);
     } catch {
       // ignore
@@ -67,7 +66,9 @@ export function ThemeCreator({ onClose }: Props) {
 
   // Live preview
   useEffect(() => {
-    applyCustomTheme(config);
+    if (!applyCustomTheme(config)) {
+      setMessage("Theme preview is invalid. Reset to continue.");
+    }
     return () => {
       // Revert on unmount
       applyTheme("greenTerminal");
@@ -79,18 +80,25 @@ export function ThemeCreator({ onClose }: Props) {
   };
 
   const handleSave = async () => {
-    const name = themeName.trim();
-    if (!name) {
-      setMessage("Enter a theme name.");
+    const nameResult = normalizeThemeNameInput(themeName);
+    if (!nameResult.ok) {
+      setMessage(nameResult.message);
+      return;
+    }
+
+    const sanitizedConfig = sanitizeCustomThemeConfig(config);
+    if (!sanitizedConfig) {
+      setMessage("Theme colors must use six-digit hex values.");
       return;
     }
     try {
-      await invoke("save_custom_theme", {
-        name,
-        config: JSON.stringify(config),
+      await invoke(TAURI_COMMANDS.saveCustomTheme, {
+        name: nameResult.value,
+        config: JSON.stringify(sanitizedConfig),
       });
-      setMessage(`Saved '${name}'.`);
-      fetchThemes();
+      setThemeName(nameResult.value);
+      setMessage(`Saved '${nameResult.value}'.`);
+      await fetchThemes();
     } catch (err) {
       setMessage(`Save failed: ${err}`);
     }
@@ -98,7 +106,11 @@ export function ThemeCreator({ onClose }: Props) {
 
   const handleLoadSaved = (info: CustomThemeInfo) => {
     try {
-      const parsed = JSON.parse(info.config) as ThemeConfig;
+      const parsed = sanitizeCustomThemeConfig(JSON.parse(info.config));
+      if (!parsed) {
+        setMessage(`'${info.name}' is invalid and was skipped.`);
+        return;
+      }
       setConfig(parsed);
       setThemeName(info.name);
     } catch {
@@ -108,8 +120,8 @@ export function ThemeCreator({ onClose }: Props) {
 
   const handleDelete = async (name: string) => {
     try {
-      await invoke("delete_custom_theme", { name });
-      fetchThemes();
+      await invoke(TAURI_COMMANDS.deleteCustomTheme, { name });
+      await fetchThemes();
       setMessage(`Deleted '${name}'.`);
     } catch (err) {
       setMessage(`Delete failed: ${err}`);
@@ -117,8 +129,9 @@ export function ThemeCreator({ onClose }: Props) {
   };
 
   const handleReset = () => {
-    setConfig(getDefaultConfig());
+    setConfig(createDefaultCustomThemeConfig());
     setThemeName("");
+    setMessage(null);
   };
 
   return (

@@ -1,6 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { TAURI_COMMANDS } from "../lib/tauriCommands";
 import type { GameSettings, ModelInfo, OllamaStatus } from "../store/types";
+
+type SettingsUpdateResult =
+  | { ok: true; settings: GameSettings }
+  | { ok: false; message: string };
 
 const DEFAULT_SETTINGS: GameSettings = {
   ollamaEnabled: false,
@@ -16,6 +21,8 @@ const DEFAULT_SETTINGS: GameSettings = {
   difficulty: "normal",
 };
 
+const shouldLogSettingsErrors = import.meta.env.MODE !== "test";
+
 export function useSettings() {
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
   const [ollamaStatus, setOllamaStatus] = useState<OllamaStatus>({
@@ -25,9 +32,13 @@ export function useSettings() {
   const [models, setModels] = useState<ModelInfo[]>([]);
 
   useEffect(() => {
-    invoke<GameSettings>("get_settings")
+    invoke<GameSettings>(TAURI_COMMANDS.getSettings)
       .then(setSettings)
-      .catch((err) => console.warn("Failed to load settings:", err));
+      .catch((err) => {
+        if (shouldLogSettingsErrors) {
+          console.warn("Failed to load settings:", err);
+        }
+      });
   }, []);
 
   const settingsRef = useRef(settings);
@@ -37,10 +48,19 @@ export function useSettings() {
     async (partial: Partial<GameSettings>) => {
       const updated = { ...settingsRef.current, ...partial };
       try {
-        await invoke("update_settings", { settings: updated });
-        setSettings(updated);
+        const saved = await invoke<GameSettings>(TAURI_COMMANDS.updateSettings, {
+          settings: updated,
+        });
+        setSettings(saved);
+        return { ok: true, settings: saved } satisfies SettingsUpdateResult;
       } catch (err) {
-        console.error("Failed to update settings:", err);
+        if (shouldLogSettingsErrors) {
+          console.error("Failed to update settings:", err);
+        }
+        return {
+          ok: false,
+          message: err instanceof Error ? err.message : String(err),
+        } satisfies SettingsUpdateResult;
       }
     },
     [],
@@ -48,7 +68,7 @@ export function useSettings() {
 
   const checkOllama = useCallback(async () => {
     try {
-      const status = await invoke<OllamaStatus>("get_ollama_status");
+      const status = await invoke<OllamaStatus>(TAURI_COMMANDS.getOllamaStatus);
       setOllamaStatus(status);
       return status;
     } catch {
@@ -59,7 +79,7 @@ export function useSettings() {
 
   const getModels = useCallback(async () => {
     try {
-      const result = await invoke<ModelInfo[]>("get_available_models");
+      const result = await invoke<ModelInfo[]>(TAURI_COMMANDS.getAvailableModels);
       setModels(result);
       return result;
     } catch {

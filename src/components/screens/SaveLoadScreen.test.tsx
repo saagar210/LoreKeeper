@@ -10,9 +10,10 @@ vi.mock("@tauri-apps/api/core", () => ({
 const { SaveLoadScreen } = await import("./SaveLoadScreen");
 
 describe("SaveLoadScreen", () => {
-  it("has role=dialog", () => {
+  it("has role=dialog", async () => {
     mockInvoke.mockResolvedValueOnce([]);
     render(<SaveLoadScreen mode="load" onClose={vi.fn()} />);
+    await waitFor(() => expect(mockInvoke).toHaveBeenCalled());
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
@@ -33,13 +34,11 @@ describe("SaveLoadScreen", () => {
 
   it("calls onLoad and onClose when Load clicked", async () => {
     const user = userEvent.setup();
-    const onLoad = vi.fn();
+    const onLoad = vi.fn().mockResolvedValue({ ok: true, slotName: "mysave" });
     const onClose = vi.fn();
     mockInvoke.mockResolvedValueOnce([createSaveSlot({ slotName: "mysave" })]);
 
-    render(
-      <SaveLoadScreen mode="load" onLoad={onLoad} onClose={onClose} />,
-    );
+    render(<SaveLoadScreen mode="load" onLoad={onLoad} onClose={onClose} />);
 
     await waitFor(() => {
       expect(screen.getByText("mysave")).toBeInTheDocument();
@@ -48,7 +47,29 @@ describe("SaveLoadScreen", () => {
     await user.click(screen.getByText("Load"));
 
     expect(onLoad).toHaveBeenCalledWith("mysave");
-    expect(onClose).toHaveBeenCalled();
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+  });
+
+  it("loads listed legacy saves without re-validating the name", async () => {
+    const user = userEvent.setup();
+    const onLoad = vi
+      .fn()
+      .mockResolvedValue({ ok: true, slotName: "legacy/save:1" });
+    const onClose = vi.fn();
+    mockInvoke.mockResolvedValueOnce([
+      createSaveSlot({ slotName: "legacy/save:1" }),
+    ]);
+
+    render(<SaveLoadScreen mode="load" onLoad={onLoad} onClose={onClose} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("legacy/save:1")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText("Load"));
+
+    expect(onLoad).toHaveBeenCalledWith("legacy/save:1");
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 
   it("requires confirmation before deleting", async () => {
@@ -71,31 +92,97 @@ describe("SaveLoadScreen", () => {
     mockInvoke.mockResolvedValueOnce([]); // refresh after delete
     await user.click(screen.getByText("Confirm?"));
 
-    expect(mockInvoke).toHaveBeenCalledWith("delete_save", { slotName: "old_save" });
+    expect(mockInvoke).toHaveBeenCalledWith("delete_save", {
+      slotName: "old_save",
+    });
   });
 
   it("shows save input in save mode", async () => {
     mockInvoke.mockResolvedValueOnce([]);
     render(<SaveLoadScreen mode="save" onClose={vi.fn()} />);
+    await waitFor(() => expect(mockInvoke).toHaveBeenCalled());
     expect(screen.getByPlaceholderText("Save name...")).toBeInTheDocument();
   });
 
   it("calls onSave when Save button clicked", async () => {
     const user = userEvent.setup();
-    const onSave = vi.fn();
+    const onSave = vi.fn().mockResolvedValue({ ok: true, slotName: "my_save" });
     const onClose = vi.fn();
     mockInvoke.mockResolvedValueOnce([]);
 
-    render(
-      <SaveLoadScreen mode="save" onSave={onSave} onClose={onClose} />,
-    );
+    render(<SaveLoadScreen mode="save" onSave={onSave} onClose={onClose} />);
 
     const input = screen.getByPlaceholderText("Save name...");
     await user.type(input, "my_save");
     await user.click(screen.getByText("Save"));
 
     expect(onSave).toHaveBeenCalledWith("my_save");
-    expect(onClose).toHaveBeenCalled();
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+  });
+
+  it("overwrites listed legacy saves without blocking on input rules", async () => {
+    const user = userEvent.setup();
+    const onSave = vi
+      .fn()
+      .mockResolvedValue({ ok: true, slotName: "legacy/save:1" });
+    const onClose = vi.fn();
+    mockInvoke.mockResolvedValueOnce([
+      createSaveSlot({ slotName: "legacy/save:1" }),
+    ]);
+
+    render(<SaveLoadScreen mode="save" onSave={onSave} onClose={onClose} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("legacy/save:1")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText("Overwrite"));
+
+    expect(onSave).toHaveBeenCalledWith("legacy/save:1");
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+  });
+
+  it("shows inline validation errors for invalid save names", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    mockInvoke.mockResolvedValueOnce([]);
+
+    render(<SaveLoadScreen mode="save" onSave={onSave} onClose={vi.fn()} />);
+
+    await user.type(screen.getByPlaceholderText("Save name..."), "bad/save");
+    await user.click(screen.getByText("Save"));
+
+    expect(
+      screen.getByText(
+        "Save name can only use letters, numbers, spaces, '-' and '_'.",
+      ),
+    ).toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("keeps the dialog open when load fails", async () => {
+    const user = userEvent.setup();
+    const onLoad = vi.fn().mockResolvedValue({
+      ok: false,
+      message: "Save data is corrupted and could not be loaded.",
+    });
+    const onClose = vi.fn();
+    mockInvoke.mockResolvedValueOnce([
+      createSaveSlot({ slotName: "broken_save" }),
+    ]);
+
+    render(<SaveLoadScreen mode="load" onLoad={onLoad} onClose={onClose} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("broken_save")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText("Load"));
+
+    expect(
+      screen.getByText("Save data is corrupted and could not be loaded."),
+    ).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it("closes on backdrop click", async () => {

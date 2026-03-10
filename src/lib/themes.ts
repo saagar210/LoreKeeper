@@ -71,26 +71,6 @@ export const themes: Record<ThemeName, Record<string, string>> = {
   },
 };
 
-export function applyTheme(theme: ThemeName): void {
-  const root = document.documentElement;
-  const vars = themes[theme];
-  for (const [key, value] of Object.entries(vars)) {
-    root.style.setProperty(key, value);
-  }
-  root.setAttribute("data-theme", theme);
-}
-
-export function applyCustomTheme(config: ThemeConfig): void {
-  const root = document.documentElement;
-  for (const [key, value] of Object.entries(config)) {
-    // Only allow CSS custom properties to prevent overriding real CSS properties
-    if (key.startsWith("--")) {
-      root.style.setProperty(key, value);
-    }
-  }
-  root.setAttribute("data-theme", "custom");
-}
-
 export const themeVarNames = [
   "--bg",
   "--text",
@@ -108,3 +88,69 @@ export const themeVarNames = [
   "--hp-mid",
   "--hp-low",
 ] as const;
+
+type ThemeVarName = (typeof themeVarNames)[number];
+
+function isThemeVarName(value: string): value is ThemeVarName {
+  return (themeVarNames as readonly string[]).includes(value);
+}
+
+export function createDefaultCustomThemeConfig(): ThemeConfig {
+  const config: ThemeConfig = {};
+  for (const key of themeVarNames) {
+    config[key] = themes.greenTerminal[key];
+  }
+  return config;
+}
+
+export function isValidThemeHexColor(value: string): boolean {
+  return /^#[0-9A-Fa-f]{6}$/.test(value);
+}
+
+export function sanitizeCustomThemeConfig(input: unknown): ThemeConfig | null {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return null;
+  }
+
+  const record = input as Record<string, unknown>;
+  const config: ThemeConfig = {};
+
+  for (const key of Object.keys(record)) {
+    if (!isThemeVarName(key)) {
+      return null;
+    }
+  }
+
+  for (const key of themeVarNames) {
+    const value = record[key];
+    if (typeof value !== "string" || !isValidThemeHexColor(value)) {
+      return null;
+    }
+    config[key] = value;
+  }
+
+  return config;
+}
+
+export function applyTheme(theme: ThemeName): void {
+  const root = document.documentElement;
+  const vars = themes[theme];
+  for (const [key, value] of Object.entries(vars)) {
+    root.style.setProperty(key, value);
+  }
+  root.setAttribute("data-theme", theme);
+}
+
+export function applyCustomTheme(config: ThemeConfig): boolean {
+  const sanitized = sanitizeCustomThemeConfig(config);
+  if (!sanitized) {
+    return false;
+  }
+
+  const root = document.documentElement;
+  for (const [key, value] of Object.entries(sanitized)) {
+    root.style.setProperty(key, value);
+  }
+  root.setAttribute("data-theme", "custom");
+  return true;
+}

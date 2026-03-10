@@ -17,7 +17,7 @@ mkdir -p "$CARGO_TARGET_DIR" "$VITE_CACHE_DIR"
 
 echo "[lean-dev] Temporary Cargo target: $CARGO_TARGET_DIR"
 echo "[lean-dev] Temporary Vite cache:   $VITE_CACHE_DIR"
-echo "[lean-dev] Running: npm run tauri dev $*"
+echo "[lean-dev] Running: npm run tauri -- dev $*"
 
 cd "$ROOT_DIR"
-npm run tauri dev "$@"
+npm run tauri -- dev "$@"

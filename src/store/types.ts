@@ -1,11 +1,41 @@
 // TypeScript mirrors of Rust types (camelCase)
 
 export type Direction = "north" | "south" | "east" | "west" | "up" | "down";
-export type Mood = "peaceful" | "tense" | "mysterious" | "dark" | "sacred" | "dangerous";
-export type ItemType = "weapon" | "armor" | "consumable" | "key" | "scroll" | "quest" | "miscellaneous";
-export type DialogueState = "greeting" | "familiar" | "questOffered" | "questActive" | "questComplete" | "hostile" | "dead";
-export type LineType = "narration" | "system" | "error" | "playerInput" | "combat" | "dialogue";
-export type ThemeName = "greenTerminal" | "amberTerminal" | "parchment" | "darkModern";
+export type Mood =
+  | "peaceful"
+  | "tense"
+  | "mysterious"
+  | "dark"
+  | "sacred"
+  | "dangerous";
+export type ItemType =
+  | "weapon"
+  | "armor"
+  | "consumable"
+  | "key"
+  | "scroll"
+  | "quest"
+  | "miscellaneous";
+export type DialogueState =
+  | "greeting"
+  | "familiar"
+  | "questOffered"
+  | "questActive"
+  | "questComplete"
+  | "hostile"
+  | "dead";
+export type LineType =
+  | "narration"
+  | "system"
+  | "error"
+  | "playerInput"
+  | "combat"
+  | "dialogue";
+export type ThemeName =
+  | "greenTerminal"
+  | "amberTerminal"
+  | "parchment"
+  | "darkModern";
 export type EndingType = "victoryPeace" | "victoryCombat" | "death";
 
 export type GameMode =
@@ -276,7 +306,7 @@ export interface CustomThemeInfo {
 export interface ModuleInfo {
   name: string;
   description: string;
-  path: string;
+  moduleId: string;
   locationCount: number;
   itemCount: number;
 }
@@ -336,6 +366,10 @@ export interface ValidationResult {
   valid: boolean;
   errors: string[];
   warnings: string[];
+}
+
+export interface ModuleExportResult {
+  moduleId: string;
 }
 
 export interface EditorRoom {

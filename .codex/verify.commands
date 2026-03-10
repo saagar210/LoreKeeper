@@ -1,7 +1,7 @@
-pnpm lint
-pnpm typecheck
-pnpm test:coverage
-pnpm test:integration
-pnpm test:e2e:smoke
-pnpm docs:generate
-pnpm docs:check
+# codex-os-managed
+npm run git:guard:all
+npm run verify:frontend
+npm run perf:bundle
+npm run perf:build
+npm run perf:assets
+npm run perf:memory

@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { trapFocus } from "../../lib/focusTrap";
 import { formatDate } from "../../lib/format";
+import { TAURI_COMMANDS } from "../../lib/tauriCommands";
 import type { CommandLogEntry, ReplayDetail, ReplayInfo } from "../../store/types";
 
 interface Props {
@@ -166,7 +167,7 @@ export function ReplayScreen({ onClose }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    invoke<ReplayInfo[]>("list_replays")
+    invoke<ReplayInfo[]>(TAURI_COMMANDS.listReplays)
       .then(setReplays)
       .catch((err) => setError(`Failed to load replays: ${err}`))
       .finally(() => setLoading(false));
@@ -180,7 +181,7 @@ export function ReplayScreen({ onClose }: Props) {
 
   const handleSelectReplay = useCallback(async (id: number) => {
     try {
-      const detail = await invoke<ReplayDetail>("get_replay", { id });
+      const detail = await invoke<ReplayDetail>(TAURI_COMMANDS.getReplay, { id });
       setSelectedReplay(detail);
     } catch (err) {
       setError(`Failed to load replay: ${err}`);

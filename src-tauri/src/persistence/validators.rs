@@ -46,8 +46,22 @@ fn normalize_user_label(value: &str, field_name: &str, max_len: usize) -> Result
     Ok(trimmed.to_string())
 }
 
+fn validate_existing_persisted_label(value: &str, field_name: &str) -> Result<String, String> {
+    if value.trim().is_empty() {
+        return Err(format!("{field_name} cannot be empty."));
+    }
+    if value.chars().any(|c| c.is_control()) {
+        return Err(format!("{field_name} cannot contain control characters."));
+    }
+    Ok(value.to_string())
+}
+
 pub fn validate_save_slot_name(value: &str) -> Result<String, String> {
     normalize_user_label(value, "Save name", SAVE_SLOT_MAX_LEN)
+}
+
+pub fn validate_existing_save_slot_name(value: &str) -> Result<String, String> {
+    validate_existing_persisted_label(value, "Save name")
 }
 
 pub fn validate_theme_name(value: &str) -> Result<String, String> {
@@ -94,7 +108,10 @@ pub fn validate_theme_config(config: &str) -> Result<BTreeMap<String, String>, S
 
 #[cfg(test)]
 mod tests {
-    use super::{validate_save_slot_name, validate_theme_config, validate_theme_name};
+    use super::{
+        validate_existing_save_slot_name, validate_save_slot_name, validate_theme_config,
+        validate_theme_name,
+    };
 
     #[test]
     fn save_slot_name_is_trimmed_and_validated() {
@@ -113,6 +130,16 @@ mod tests {
             "Amber Night".to_string()
         );
         assert!(validate_theme_name("Theme:One").is_err());
+    }
+
+    #[test]
+    fn existing_save_slot_names_allow_legacy_characters() {
+        assert_eq!(
+            validate_existing_save_slot_name("legacy/save:1").unwrap(),
+            "legacy/save:1".to_string()
+        );
+        assert!(validate_existing_save_slot_name(" \t ").is_err());
+        assert!(validate_existing_save_slot_name("bad\nslot").is_err());
     }
 
     #[test]

@@ -50,6 +50,28 @@ describe("SaveLoadScreen", () => {
     await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 
+  it("loads listed legacy saves without re-validating the name", async () => {
+    const user = userEvent.setup();
+    const onLoad = vi
+      .fn()
+      .mockResolvedValue({ ok: true, slotName: "legacy/save:1" });
+    const onClose = vi.fn();
+    mockInvoke.mockResolvedValueOnce([
+      createSaveSlot({ slotName: "legacy/save:1" }),
+    ]);
+
+    render(<SaveLoadScreen mode="load" onLoad={onLoad} onClose={onClose} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("legacy/save:1")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText("Load"));
+
+    expect(onLoad).toHaveBeenCalledWith("legacy/save:1");
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+  });
+
   it("requires confirmation before deleting", async () => {
     const user = userEvent.setup();
     const saves = [createSaveSlot({ slotName: "old_save" })];
@@ -95,6 +117,28 @@ describe("SaveLoadScreen", () => {
     await user.click(screen.getByText("Save"));
 
     expect(onSave).toHaveBeenCalledWith("my_save");
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+  });
+
+  it("overwrites listed legacy saves without blocking on input rules", async () => {
+    const user = userEvent.setup();
+    const onSave = vi
+      .fn()
+      .mockResolvedValue({ ok: true, slotName: "legacy/save:1" });
+    const onClose = vi.fn();
+    mockInvoke.mockResolvedValueOnce([
+      createSaveSlot({ slotName: "legacy/save:1" }),
+    ]);
+
+    render(<SaveLoadScreen mode="save" onSave={onSave} onClose={onClose} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("legacy/save:1")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText("Overwrite"));
+
+    expect(onSave).toHaveBeenCalledWith("legacy/save:1");
     await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 

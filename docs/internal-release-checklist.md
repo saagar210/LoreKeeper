@@ -5,9 +5,9 @@ This checklist records the current internal release candidate evidence for the m
 ## Candidate
 
 - Candidate branch: `codex/fix/default-branch-risk-hardening`
-- Release tooling baseline commit: `1eb08c9`
 - Default branch fallback ref: `origin/master @ 990bae4`
-- Exact artifact commit SHA: read from the generated `release-manifest.json`
+- Exact release commit SHA: read from the generated `release-manifest.json`
+- Exact artifact directory: `release-artifacts/internal/macos/<version>-<shortsha>/`
 
 ## Branch Convergence Decision
 
@@ -25,9 +25,9 @@ This checklist records the current internal release candidate evidence for the m
 
 ## Current Artifact Evidence
 
-- Artifact directory: `release-artifacts/internal/macos/0.1.0-1eb08c9/`
-- Manifest: `release-artifacts/internal/macos/0.1.0-1eb08c9/release-manifest.json`
-- Checksums: `release-artifacts/internal/macos/0.1.0-1eb08c9/checksums.txt`
+- Artifact directory: `release-artifacts/internal/macos/<version>-<shortsha>/`
+- Manifest: `release-artifacts/internal/macos/<version>-<shortsha>/release-manifest.json`
+- Checksums: `release-artifacts/internal/macos/<version>-<shortsha>/checksums.txt`
 - Produced files:
   - `LoreKeeper_0.1.0_aarch64.dmg`
   - `LoreKeeper.app.tar.gz`
@@ -55,6 +55,7 @@ This checklist records the current internal release candidate evidence for the m
 - Malformed save/theme/settings rows fail safe -> Pass via Rust and frontend automated coverage
 - Existing settings load without crashing -> Pass via settings persistence coverage
 - Existing custom themes either load or are omitted safely -> Pass via theme sanitization coverage
+- Existing save slots with pre-hardening names remain loadable, deletable, and overwriteable -> Pass via Rust and frontend coverage
 - Existing local saves from a prior real user environment -> Waiver
 
 Waiver note:

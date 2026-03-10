@@ -84,6 +84,11 @@ Compared with the default branch fallback line, this candidate adds:
 - desktop hardening for modules, settings, themes, and save/load validation
 - browser-level E2E coverage for the current validated flows
 
+Compatibility note:
+
+- New manual save names now use the stricter safe-label rules.
+- Existing saves created before that hardening remain loadable, deletable, and overwriteable from the save list so internal users do not lose access to prior progress.
+
 Required verification commands for every internal candidate:
 
 ```bash
@@ -143,6 +148,7 @@ Do not block this internal release on:
 - The internal macOS build is unsigned, so Gatekeeper may prompt on first launch.
 - Internal release verification relies on the existing browser E2E harness plus local packaged-build smoke. There is no repo-owned fully automated GUI test harness for the packaged Tauri app yet.
 - Ollama remains optional and local-only by design. Internal release validation should not treat unavailable Ollama as a blocker if the fallback narration path works.
+- The manual internal macOS GitHub workflow installs the Playwright browser before verification; if that step ever drifts, the workflow will fail before artifact creation rather than producing a weak release signal.
 - Tauri warns that the bundle identifier `com.lorekeeper.app` ends with `.app`. The current build still succeeds, but that identifier should be corrected before public distribution if we plan any data-path migration carefully.
 
 ## Reporting and Triage

@@ -64,14 +64,23 @@ export function SaveLoadScreen({ mode, onSave, onLoad, onClose }: Props) {
     setMessage(outcome.message);
   };
 
-  const handleLoad = async (slotInput: string) => {
-    const result = normalizeSaveSlotNameInput(slotInput);
-    if (!result.ok) {
-      setMessage(result.message);
+  const handleExistingSave = async (slotName: string) => {
+    const outcome = await onSave?.(slotName);
+    if (!outcome) {
+      onClose();
+      return;
+    }
+    if (outcome.ok) {
+      setMessage(null);
+      onClose();
       return;
     }
 
-    const outcome = await onLoad?.(result.value);
+    setMessage(outcome.message);
+  };
+
+  const handleExistingLoad = async (slotName: string) => {
+    const outcome = await onLoad?.(slotName);
     if (!outcome) {
       onClose();
       return;
@@ -185,8 +194,8 @@ export function SaveLoadScreen({ mode, onSave, onLoad, onClose }: Props) {
                   <button
                     onClick={() =>
                       mode === "save"
-                        ? void handleSave(save.slotName)
-                        : void handleLoad(save.slotName)
+                        ? void handleExistingSave(save.slotName)
+                        : void handleExistingLoad(save.slotName)
                     }
                     className="text-[var(--accent)] hover:underline"
                   >
